@@ -14,6 +14,9 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
+using System.Threading.Tasks;
+
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Asn1.Utilities;
@@ -23,8 +26,9 @@ using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities.Encoders;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Utilities.IO.Pem;
-using System.Windows.Threading;
-using System.Threading.Tasks;
+
+using CertViewer.Dialogs;
+using Microsoft.Win32;
 
 namespace CertViewer
 {
@@ -35,11 +39,15 @@ namespace CertViewer
     {
         private const int WM_DRAWCLIPBOARD = 0x0308;
 
+        private static readonly Lazy<ILookup<string, string>> EXT_KEY_USAGE = new Lazy<ILookup<string, string>>(CreateLookup_ExtKeyUsage);
+
         private readonly Regex PEM_CERTIFICATE = new Regex(@"-{3,}\s*BEGIN\s+CERTIFICATE\s*-{3,}(.+)-{3,}\s*END\s+CERTIFICATE\s*-{3,}", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
         private readonly Regex INVALID_BASE64_CHARS = new Regex(@"[^A-Za-z0-9+/]+", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+        
+        private IntPtr? m_wndHandle = null;
+        private bool m_initialized = false;
 
-        private static readonly Lazy<ILookup<string, string>> EXT_KEY_USAGE = new Lazy<ILookup<string, string>>(CreateLookup_ExtKeyUsage);
-        private WindowInteropHelper interopHelper;
+        public X509Certificate Certificate { get; private set; }
 
         // ==================================================================
         // Constructor
@@ -56,16 +64,6 @@ namespace CertViewer
         // Event Handlers
         // ==================================================================
 
-        protected override void OnContentRendered(EventArgs e)
-        {
-            base.OnContentRendered(e);
-            SizeToContent = SizeToContent.Manual;
-            MinWidth = ActualWidth;
-            MaxHeight = MinHeight = ActualHeight;
-            SetClipboardViewer((interopHelper = new WindowInteropHelper(this)).Handle);
-            Checkbox_StayOnTop.IsChecked = Topmost;
-        }
-
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
@@ -73,6 +71,23 @@ namespace CertViewer
             if (!ReferenceEquals(source, null))
             {
                 source.AddHook(WndProc);
+                SetClipboardViewer((m_wndHandle = source.Handle).Value);
+            }
+        }
+
+        protected override async void OnContentRendered(EventArgs e)
+        {
+            base.OnContentRendered(e);
+            if (!m_initialized)
+            {
+                MaxHeight = MinHeight = ActualHeight;
+                MinWidth = ActualWidth;
+                Checkbox_StayOnTop.IsChecked = Topmost;
+                if (!await ParseCliArguments())
+                {
+                    ParseCertificateFromClipboard();
+                }
+                m_initialized = true;
             }
         }
 
@@ -112,7 +127,7 @@ namespace CertViewer
             switch (msg)
             {
                 case WM_DRAWCLIPBOARD:
-                    if (Checkbox_MonitorClipboard.IsChecked.GetValueOrDefault(false))
+                    if (m_initialized && Checkbox_MonitorClipboard.IsChecked.GetValueOrDefault(false))
                     {
                         ParseCertificateFromClipboard();
                     }
@@ -120,6 +135,43 @@ namespace CertViewer
                     break;
             }
             return IntPtr.Zero;
+        }
+
+        private void Button_SubjectDN_Click(object sender, RoutedEventArgs e)
+        {
+            X509Certificate cert;
+            if (!ReferenceEquals(cert = Certificate, null))
+            {
+                ShowDistinguishedNameDetails(cert.SubjectDN, "Subject DN");
+            }
+        }
+
+        private void Button_IssuerDN_Click(object sender, RoutedEventArgs e)
+        {
+            X509Certificate cert;
+            if (!ReferenceEquals(cert = Certificate, null))
+            {
+                ShowDistinguishedNameDetails(cert.IssuerDN, "Issuer DN");
+            }
+        }
+
+        private void Button_SubjAltNames_Click(object sender, RoutedEventArgs e)
+        {
+            X509Certificate cert;
+            if (!ReferenceEquals(cert = Certificate, null))
+            {
+                ShowSubjAltNamesDetails(cert.GetSubjectAlternativeNames());
+            }
+        }
+
+        private async void Image_Placeholder_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Certificate Files|*.pem;*.der;*.cer;*.crt|All Files|*.*";
+            if (openFileDialog.ShowDialog().GetValueOrDefault(false))
+            {
+                await ParseCertificateFile(openFileDialog.FileName);
+            }
         }
 
         private void StayOnTop_Clicked(object sender, RoutedEventArgs e)
@@ -133,12 +185,14 @@ namespace CertViewer
 
         private void Clear_Clicked(object sender, RoutedEventArgs e)
         {
-            TextBox_Subject.Text = TextBox_Issuer.Text = TextBox_Serial.Text = TextBox_NotBefore.Text =
-                TextBox_NotAfter.Text = TextBox_KeyUsage.Text = TextBox_ExtKeyUsage.Text = TextBox_PublicKey.Text =
-                TextBox_DigestSha1.Text = TextBox_DigestSha256.Text = TextBox_PemData.Text = string.Empty;
+            Certificate = null;
+            TextBox_Asn1Data.Text = TextBox_BasicConstraints.Text = TextBox_DigestSha256.Text = 
+                TextBox_ExtKeyUsage.Text = TextBox_Issuer.Text = TextBox_KeyUsage.Text = TextBox_NotAfter.Text =
+                TextBox_NotBefore.Text = TextBox_PemData.Text = TextBox_PublicKey.Text = TextBox_Serial.Text =
+                TextBox_SignAlgo.Text = TextBox_SubjAltNames.Text = TextBox_Subject.Text = string.Empty;
             ShowPlaceholder(true);
+            Tab_Asn1Data.IsEnabled = Tab_PemData.IsEnabled = false;
             TabControl.SelectedItem = Tab_CertInfo;
-            Tab_PemData.IsEnabled = false;
         }
 
         private void Label_Placeholder_MouseDown(object sender, MouseButtonEventArgs e)
@@ -153,6 +207,26 @@ namespace CertViewer
         // ==================================================================
         // Internal Methods
         // ==================================================================
+
+        private async Task<bool> ParseCliArguments()
+        {
+            try
+            {
+                string[] commandLineArgs = Environment.GetCommandLineArgs();
+                if (!ReferenceEquals(commandLineArgs, null))
+                {
+                    foreach (string filename in commandLineArgs.Skip(1))
+                    {
+                        if (await ParseCertificateFile(filename))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
 
         private async void ParseCertificateFromClipboard()
         {
@@ -194,11 +268,9 @@ namespace CertViewer
                     }
                     return true;
                 }
-                catch
-                {
-                    return false;
-                }
+                catch { }
             }
+            return false;
         }
 
         private void ParseCertificateData(string pemText)
@@ -219,7 +291,7 @@ namespace CertViewer
             try
             {
                 X509Certificate cert = new X509CertificateParser().ReadCertificate(data);
-                if (!ReferenceEquals(cert, null))
+                if (!ReferenceEquals(Certificate = cert, null))
                 {
                     TextBox_Subject.Text = X500NameToRFC2253(cert.SubjectDN);
                     TextBox_Issuer.Text = X500NameToRFC2253(cert.IssuerDN);
@@ -234,7 +306,7 @@ namespace CertViewer
                     TextBox_ExtKeyUsage.Text = ParseExtendedKeyUsage(cert.GetExtendedKeyUsage());
                     TextBox_SubjAltNames.Text = ParseSubjectAlternativeNames(cert.GetSubjectAlternativeNames());
                     TextBox_PublicKey.Text = ParsePublicKey(cert.GetPublicKey());
-                    TextBox_DigestSha1.Text = Hex.ToHexString(DigestUtilities.CalculateDigest("SHA-1", cert.GetEncoded())).ToUpperInvariant();
+                    TextBox_SignAlgo.Text = $"{cert.SigAlgName} [{cert.SigAlgOid}]";
                     TextBox_DigestSha256.Text = Hex.ToHexString(DigestUtilities.CalculateDigest("SHA-256", cert.GetEncoded())).ToUpperInvariant();
                     DateTime now = DateTime.UtcNow;
                     TextBox_NotBefore.Foreground = (notBeforeUtc > now) ? Brushes.Red : Brushes.DarkGreen;
@@ -244,7 +316,7 @@ namespace CertViewer
                     TabControl.SelectedItem = Tab_CertInfo;
                     Tab_PemData.IsEnabled = true;
                     ShowPlaceholder(false);
-                    SetForegroundWindow(interopHelper.Handle);
+                    BringWindowToFront(m_wndHandle);
                 }
                 else
                 {
@@ -256,6 +328,47 @@ namespace CertViewer
             {
                 TabControl.SelectedItem = Tab_CertInfo;
                 ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
+            }
+        }
+
+        private void ShowDistinguishedNameDetails(X509Name name, string title)
+        {
+            if ((!ReferenceEquals(name, null)) && (!string.IsNullOrWhiteSpace(title)))
+            {
+                using (OverrideCursor busy = new OverrideCursor())
+                {
+                    IList oidList = name.GetOidList();
+                    IList valList = name.GetValueList();
+                    if ((!ReferenceEquals(oidList, null)) && (!ReferenceEquals(valList, null)))
+                    {
+                        IEnumerable<KeyValuePair<string, string>> items = oidList.OfType<DerObjectIdentifier>()
+                                .Select(oid => DecodeNameIdentifier(oid))
+                                .Zip(valList.OfType<string>(), (key, value) => new KeyValuePair<string, string>(key, value));
+                        if (items.Any())
+                        {
+                            DetailsView viewer = new DetailsView(items.Reverse()) { Owner = this, Title = title };
+                            viewer.ShowDialog(busy);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ShowSubjAltNamesDetails(ICollection subjectAlternativeNames)
+        {
+            if (!ReferenceEquals(subjectAlternativeNames, null))
+            {
+                using (OverrideCursor busy = new OverrideCursor())
+                {
+                    IEnumerable<KeyValuePair<string, string>> items = subjectAlternativeNames.OfType<IList>().Where(item => item.Count >= 2)
+                        .Select(item => new KeyValuePair<string, string>(DecodeSubjectAlternativeNameType(item[0] as int?), item[1] as string))
+                        .Where(item => !(string.IsNullOrEmpty(item.Key) || string.IsNullOrEmpty(item.Value)));
+                    if (items.Any())
+                    {
+                        DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Subject Alternative Names" };
+                        viewer.ShowDialog(busy);
+                    }
+                }
             }
         }
 
@@ -336,7 +449,7 @@ namespace CertViewer
                 case 7: return "EncipherOnly";
                 case 8: return "DecipherOnly";
             }
-            return string.Empty;
+            return $"#{index}";
         }
 
         private static string ParseExtendedKeyUsage(IList extendedKeyUsage)
@@ -349,10 +462,7 @@ namespace CertViewer
                     StringBuilder sb = new StringBuilder();
                     foreach (string usageOid in extendedKeyUsage)
                     {
-                        foreach (string usageName in lookup[usageOid])
-                        {
-                            Append(sb, usageName);
-                        }
+                        Append(sb, lookup[usageOid].Concat(Once(usageOid)).First());
                     }
                     if (sb.Length > 0)
                     {
@@ -371,15 +481,15 @@ namespace CertViewer
                 try
                 {
                     StringBuilder sb = new StringBuilder();
-                    int? type;
+                    string type;
                     object value;
                     foreach (IList name in subjectAlternativeNames)
                     {
                         if (name.Count >= 2)
                         {
-                            if ((type = name[0] as int?).HasValue && (!ReferenceEquals(value = name[1], null)))
+                            if ((!string.IsNullOrEmpty(type = DecodeSubjectAlternativeNameType(name[0] as int?))) && (!ReferenceEquals(value = name[1], null)))
                             {
-                                Append(sb, $"{DecodeSubjectAlternativeNameType(type.Value)}: {DecodeSubjectAlternativeNameValue(value)}");
+                                Append(sb, $"{type}: {DecodeSubjectAlternativeNameValue(value)}");
                             }
                         }
                     }
@@ -393,19 +503,23 @@ namespace CertViewer
             return "(None)";
         }
 
-        private static string DecodeSubjectAlternativeNameType(int type)
+        private static string DecodeSubjectAlternativeNameType(int? type)
         {
-            switch (type)
+            if (type.HasValue)
             {
-                case 0: return "OtherName";
-                case 1: return "Email";
-                case 2: return "DNS";
-                case 3: return "X400Address";
-                case 4: return "DirectoryName";
-                case 5: return "EdiPartyName";
-                case 6: return "UniformResourceIdentifier";
-                case 7: return "IPAddress";
-                case 8: return "RegisteredID";
+                switch (type.Value)
+                {
+                    case 0: return "OtherName";
+                    case 1: return "Email";
+                    case 2: return "DNS";
+                    case 3: return "X400Address";
+                    case 4: return "DirectoryName";
+                    case 5: return "EdiPartyName";
+                    case 6: return "UniformResourceIdentifier";
+                    case 7: return "IPAddress";
+                    case 8: return "RegisteredID";
+                }
+                return $"#{type.Value}";
             }
             return string.Empty;
         }
@@ -420,6 +534,12 @@ namespace CertViewer
             {
                 return $"{value.GetType().Name}=\"{value.ToString().Replace("\"", "\\\"")}\"";
             }
+        }
+
+        private static string DecodeNameIdentifier(DerObjectIdentifier oid)
+        {
+            string attributeName = X509Name.RFC2253Symbols[oid] as string;
+            return (!string.IsNullOrEmpty(attributeName)) ? attributeName : oid.Id;
         }
 
         private static string ParsePublicKey(AsymmetricKeyParameter asymmetricKeyParameter)
@@ -521,20 +641,15 @@ namespace CertViewer
 
         private static string X500NameToRFC2253(X509Name name)
         {
-            string str = name.ToString(true, X509Name.DefaultSymbols);
+            string str = name.ToString(true, X509Name.RFC2253Symbols);
             return (!string.IsNullOrWhiteSpace(str)) ? str.Trim() : string.Empty;
         }
 
-        private class OverrideCursor : IDisposable
+        private static void BringWindowToFront(IntPtr? hwnd)
         {
-            public OverrideCursor()
+            if (hwnd.HasValue)
             {
-                Mouse.OverrideCursor = Cursors.Wait;
-            }
-
-            public void Dispose()
-            {
-                Mouse.OverrideCursor = null;
+                SetForegroundWindow(hwnd.Value);
             }
         }
 
@@ -550,6 +665,34 @@ namespace CertViewer
             catch { }
             return string.Empty;
         }
+
+        public static IEnumerable<T> Once<T>(T item)
+        {
+            yield return item;
+        }
+
+        private class OverrideCursor : IDisposable
+        {
+            private volatile bool m_disposed = false;
+
+            public OverrideCursor()
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+            }
+
+            public void Dispose()
+            {
+                if (!m_disposed)
+                {
+                    m_disposed = true;
+                    Mouse.OverrideCursor = null;
+                }
+            }
+        }
+
+        // ==================================================================
+        // Native Methods
+        // ==================================================================
 
         [DllImport("User32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr SetClipboardViewer(IntPtr hWndNewViewer);

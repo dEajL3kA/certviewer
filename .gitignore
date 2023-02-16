@@ -1,5 +1,6 @@
-/**/bin
-/**/obj
-/.vs
-/out
 /packages
+/.vs
+/**/out
+/**/obj
+/**/bin
+*.user

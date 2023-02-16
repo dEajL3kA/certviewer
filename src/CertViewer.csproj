@@ -20,7 +20,10 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <BaseOutputPath>..\bin\</BaseOutputPath>
+    <OutputPath>..\bin\Debug\</OutputPath>
+    <BaseIntermediateOutputPath>..\obj\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>..\obj\Debug\</IntermediateOutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -29,7 +32,10 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <BaseOutputPath>..\bin\</BaseOutputPath>
+    <OutputPath>..\bin\Release\</OutputPath>
+    <BaseIntermediateOutputPath>..\obj\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>..\obj\Release\</IntermediateOutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -60,6 +66,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Page Include="Dialogs\DetailsView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -67,6 +77,9 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Dialogs\DetailsView.xaml.cs">
+      <DependentUpon>DetailsView.xaml</DependentUpon>
     </Compile>
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
@@ -120,6 +133,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\banner.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_information.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

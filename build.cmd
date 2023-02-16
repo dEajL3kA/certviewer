@@ -9,7 +9,7 @@ echo ----------------------------------------------------------------
 echo Clean up...
 echo ----------------------------------------------------------------
 
-for %%d in (packages src\bin src\obj out) do (
+for %%d in (packages bin obj out) do (
 	echo %%~d
 	if exist %%~d\. rmdir /S /Q %%~d
 )
@@ -34,9 +34,9 @@ echo ----------------------------------------------------------------
 mkdir "out"
 mkdir "out\target"
 
-copy /B "src\bin\Release\CertViewer.exe" "out\target"
-copy /B "src\bin\Release\CertViewer.exe.config" "out\target"
-copy /B "src\bin\Release\BouncyCastle.Crypto.dll" "out\target"
+copy /B "bin\Release\CertViewer.exe" "out\target"
+copy /B "bin\Release\CertViewer.exe.config" "out\target"
+copy /B "bin\Release\BouncyCastle.Crypto.dll" "out\target"
 copy /B "LICENSE.txt" "out\target"
 
 "%PANDOC%" -f markdown -t html5 --metadata title="CertViewer" --embed-resources -o "out\target\README.html" "README.md"
