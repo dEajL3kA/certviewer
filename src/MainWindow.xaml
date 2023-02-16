@@ -1,0 +1,111 @@
+﻿<Window x:Class="CertViewer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Certificate Viewer"
+        Topmost="True"
+        AllowDrop="true"
+        Height="400" Width="576"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="ToolWindow"
+        PreviewDragEnter="Window_PreviewDragEnter"
+        PreviewDragOver="Window_PreviewDragEnter"
+        PreviewDragLeave="Window_PreviewDragLeave"
+        PreviewDrop="Window_PreviewDrop">
+
+    <Window.Resources>
+        <BitmapImage x:Key="ImageSource_Banner" UriSource="Resources/banner.png"/>
+        <BitmapImage x:Key="ImageSource_Certificate" UriSource="Resources/ico_certificate.png"/>
+        <BitmapImage x:Key="ImageSource_Details" UriSource="Resources/ico_details.png"/>
+        <BitmapImage x:Key="ImageSource_Clipboard" UriSource="Resources/ico_clipboard.png"/>
+    </Window.Resources>
+
+    <DockPanel LastChildFill="True" Margin="8">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Button Content="Clear Data" Click="Clear_Clicked" Padding="20,5,20,5" DockPanel.Dock="Right" FontWeight="Bold"></Button>
+            <CheckBox Content="Keep this window on top" DockPanel.Dock="Left" VerticalAlignment="Center" Name="Checkbox_StayOnTop" Click="StayOnTop_Clicked" IsChecked="True"></CheckBox>
+            <CheckBox Content="Monitor clipboard for changes" DockPanel.Dock="Left" VerticalAlignment="Center" Name="Checkbox_MonitorClipboard" Margin="14,0,0,0" IsChecked="True"></CheckBox>
+            <Grid></Grid>
+        </DockPanel>
+        <TabControl DockPanel.Dock="Top" Name="TabControl">
+            <TabItem Name="Tab_CertInfo">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                        <Image Source="{StaticResource ImageSource_Certificate}" Stretch="None"/>
+                        <TextBlock Text="Certificate Information" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid>
+                    <Grid Visibility="Collapsed" Name="Panel_Placeholder" ToolTip="You can drop a certificate file here, or copy PEM data to the clipboard!">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="auto"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                            <RowDefinition Height="auto"></RowDefinition>
+                        </Grid.RowDefinitions>
+                        <Image Grid.Row="1" Source="{StaticResource ImageSource_Banner}" Stretch="None"/>
+                        <Label Grid.Row="3" Name="Label_Placeholder" Background="DarkRed" Foreground="WhiteSmoke" FontFamily="{StaticResource HackFont}" HorizontalAlignment="Center" Padding="8,2,8,2" Visibility="Hidden" MouseDown="Label_Placeholder_MouseDown" Margin="0,0,0,4"></Label>
+                    </Grid>
+                    <StackPanel Margin="8" Name="Panel_CertInfo">
+                        <Label Content="Subject DN:" FontWeight="SemiBold" Margin="0,0,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_Subject" IsReadOnly="true" FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Issuer DN:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_Issuer" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Serial Number:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_Serial" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                                <ColumnDefinition Width="8"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <Label Content="Not Before:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                                <TextBox Name="TextBox_NotBefore" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                            </StackPanel>
+                            <StackPanel  Grid.Column="2">
+                                <Label Content="Not After:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                                <TextBox Name="TextBox_NotAfter" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                            </StackPanel>
+                        </Grid>
+                        <Label Content="Basicy Constraints:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_BasicConstraints" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Key Usage:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_KeyUsage" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Extended Key Usage:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_ExtKeyUsage" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Subject Alternative Names:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_SubjAltNames" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Public Key:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_PublicKey" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Fingerprint (SHA-1):" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_DigestSha1" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,0" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                        <Label Content="Fingerprint (SHA-256):" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <TextBox Name="TextBox_DigestSha256" IsReadOnly="true"  FontFamily="{StaticResource HackFont}" Margin="0,2,0,8" Padding="2" AcceptsReturn="False" MaxLines="1"></TextBox>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            <TabItem  Name="Tab_Asn1Data" IsEnabled="False">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                        <Image Source="{StaticResource ImageSource_Details}" Stretch="None"/>
+                        <TextBlock Text="ASN.1 Outline" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <TextBox Name="TextBox_Asn1Data" Margin="8" FontFamily="{StaticResource HackFont}" IsReadOnly="True" VerticalScrollBarVisibility="Auto"></TextBox>
+            </TabItem>
+            <TabItem  Name="Tab_PemData" IsEnabled="False">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                        <Image Source="{StaticResource ImageSource_Clipboard}" Stretch="None"/>
+                        <TextBlock Text="PEM Data" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <TextBox Name="TextBox_PemData" Margin="8" FontFamily="{StaticResource HackFont}" IsReadOnly="True" VerticalScrollBarVisibility="Auto"></TextBox>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>
