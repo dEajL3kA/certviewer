@@ -1,8 +1,8 @@
 ﻿using System.Reflection;
-using System.Resources;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
+
+using static CertViewer.Properties.MyVersion;
 
 // Allgemeine Informationen über eine Assembly werden über die folgenden
 // Attribute gesteuert. Ändern Sie diese Attributwerte, um die Informationen zu ändern,
@@ -10,11 +10,8 @@ using System.Windows;
 [assembly: AssemblyTitle("CertViewer")]
 [assembly: AssemblyDescription("Certificate Viewer")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Fraunhofer SIT")]
+[assembly: AssemblyCompany("dEajL3kA")]
 [assembly: AssemblyProduct("Certificate Viewer")]
-[assembly: AssemblyCopyright("Copyright © Fraunhofer SIT 2023")]
-[assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]
 
 // Durch Festlegen von ComVisible auf FALSE werden die Typen in dieser Assembly
 // für COM-Komponenten unsichtbar.  Wenn Sie auf einen Typ in dieser Assembly von
@@ -51,5 +48,6 @@ using System.Windows;
 // Sie können alle Werte angeben oder Standardwerte für die Build- und Revisionsnummern verwenden,
 // indem Sie "*" wie unten gezeigt eingeben:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion             (VERSION_MAJOR + "." + VERSION_MINOR + ".*")]
+[assembly: AssemblyFileVersion         (VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_PATCH + ".0")]
+[assembly: AssemblyInformationalVersion(VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_PATCH)]

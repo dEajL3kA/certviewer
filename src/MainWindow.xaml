@@ -1,8 +1,26 @@
-﻿<Window x:Class="CertViewer.MainWindow"
+﻿<!--
+    CertViewer
+    Copyright (c) 2023 dEajL3kA <Cumpoing79@web.de>
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction,
+    including without limitation the rights to use, copy, modify, merge, publish, distribute,
+    sub license, and/or sell copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions: The above copyright notice and this
+    permission notice shall be included in all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+    NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+    OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+<Window x:Class="CertViewer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CertViewer"
         mc:Ignorable="d"
         Title="Certificate Viewer"
         Topmost="True"
@@ -21,8 +39,15 @@
         <BitmapImage x:Key="ImageSource_Banner" UriSource="Resources/banner.png"/>
         <BitmapImage x:Key="ImageSource_Certificate" UriSource="Resources/ico_certificate.png"/>
         <BitmapImage x:Key="ImageSource_Clipboard" UriSource="Resources/ico_clipboard.png"/>
+        <BitmapImage x:Key="ImageSource_Copy" UriSource="Resources/ico_copy.png"/>
         <BitmapImage x:Key="ImageSource_Details" UriSource="Resources/ico_details.png"/>
-        <BitmapImage x:Key="ImageSource_Information" UriSource="Resources/ico_information.png"/>
+        <BitmapImage x:Key="ImageSource_Expired" UriSource="Resources/ico_expired.png"/>
+        <BitmapImage x:Key="ImageSource_Extensions" UriSource="Resources/ico_extensions.png"/>
+        <BitmapImage x:Key="ImageSource_Help" UriSource="Resources/ico_help.png"/>
+        <BitmapImage x:Key="ImageSource_Lightbulb" UriSource="Resources/ico_lightbulb.png"/>
+        <BitmapImage x:Key="ImageSource_Report" UriSource="Resources/ico_report.png"/>
+        <BitmapImage x:Key="ImageSource_Settings" UriSource="Resources/ico_settings.png"/>
+        <BitmapImage x:Key="ImageSource_Valid" UriSource="Resources/ico_valid.png"/>
         <Style TargetType="{x:Type TextBox}" x:Key="CertProperty">
             <Setter Property="FontFamily" Value="{StaticResource HackFont}"/>
             <Setter Property="IsReadOnly" Value="True"/>
@@ -33,101 +58,201 @@
             <Setter Property="FontFamily" Value="{StaticResource HackFont}"/>
             <Setter Property="Padding" Value="4"/>
             <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+            <Setter Property="MaxLength" Value="4096"/>
         </Style>
+        <Style TargetType="Button">
+            <Style.Resources>
+                <Style TargetType="Image">
+                    <Style.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.66"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Style.Resources>
+        </Style>
+        <Style x:Key="Opacity" TargetType="FrameworkElement">
+            <Setter Property="Opacity" Value="0.8"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="true">
+                    <Setter Property="StackPanel.Opacity" Value="1" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <ContextMenu x:Key="Menu_DigestAlgo">
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.MD5}"><MenuItem.Header>MD5</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.RIPEMD160}"><MenuItem.Header>RIPEMD-160</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA1}"><MenuItem.Header>SHA-1</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA224}"><MenuItem.Header>SHA-224</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA256}"><MenuItem.Header>SHA-256</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA3_224}"><MenuItem.Header>SHA3-224</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA3_256}"><MenuItem.Header>SHA3-256</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.BLAKE2_160}"><MenuItem.Header>BLAKE2-160</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.BLAKE2_256}"><MenuItem.Header>BLAKE2-256</MenuItem.Header></MenuItem>
+            <Separator/>
+            <MenuItem Click="MenuItem_CopyDigest_Click"><MenuItem.Header>Copy Digest</MenuItem.Header><MenuItem.Icon><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></MenuItem.Icon></MenuItem>
+        </ContextMenu>
     </Window.Resources>
 
     <DockPanel LastChildFill="True" Margin="8" UseLayoutRounding="True">
         <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <Button Content="Clear Data" Click="Clear_Clicked" Padding="20,5,20,5" DockPanel.Dock="Right" FontWeight="Bold"></Button>
-            <CheckBox Content="Keep this window on top" DockPanel.Dock="Left" VerticalAlignment="Center" Name="Checkbox_StayOnTop" Click="StayOnTop_Clicked" IsChecked="True"></CheckBox>
-            <CheckBox Content="Monitor clipboard for changes" DockPanel.Dock="Left" VerticalAlignment="Center" Name="Checkbox_MonitorClipboard" Margin="14,0,0,0" IsChecked="True"></CheckBox>
+            <CheckBox Content="Keep this window on top" DockPanel.Dock="Left" VerticalAlignment="Center" Name="Checkbox_StayOnTop" Click="Checkbox_StayOnTop_Clicked"></CheckBox>
+            <CheckBox Content="Monitor clipboard for changes" DockPanel.Dock="Left" VerticalAlignment="Center" Name="Checkbox_MonitorClipboard" Click="Checkbox_MonitorClipboard_Clicked" Margin="14,0,0,0"></CheckBox>
             <Grid></Grid>
         </DockPanel>
-        <TabControl DockPanel.Dock="Top" Name="TabControl">
-            <TabItem Name="Tab_CertInfo">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
-                        <Image Source="{StaticResource ImageSource_Certificate}" Stretch="None"/>
-                        <TextBlock Text="Certificate Information" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid>
-                    <Grid Visibility="Collapsed" Name="Panel_Placeholder" ToolTip="You can drop a certificate file here, or copy PEM data to the clipboard!">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"></RowDefinition>
-                            <RowDefinition Height="auto"></RowDefinition>
-                            <RowDefinition Height="*"></RowDefinition>
-                            <RowDefinition Height="auto"></RowDefinition>
-                        </Grid.RowDefinitions>
-                        <Image Grid.Row="1" Source="{StaticResource ImageSource_Banner}" Stretch="None" MouseDown="Image_Placeholder_MouseDown" Cursor="Hand"/>
-                        <Label Grid.Row="3" Name="Label_Placeholder" Background="DarkRed" Foreground="WhiteSmoke" FontFamily="{StaticResource HackFont}" HorizontalAlignment="Center" Padding="8,2,8,2" Visibility="Hidden" MouseDown="Label_Placeholder_MouseDown" Margin="0,0,0,4"></Label>
-                    </Grid>
-                    <StackPanel Margin="8" Name="Panel_CertInfo">
-                        <Label Content="Subject DN:" FontWeight="SemiBold" Margin="0,0,0,0" Padding="0"></Label>
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_Subject}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Click="Button_SubjectDN_Click"><Image Source="{StaticResource ImageSource_Information}" Stretch="None"/></Button>
-                            <TextBox DockPanel.Dock="Left" Name="TextBox_Subject" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        </DockPanel>
-                        <Label Content="Issuer DN:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_Issuer}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Click="Button_IssuerDN_Click"><Image Source="{StaticResource ImageSource_Information}" Stretch="None"/></Button>
-                            <TextBox DockPanel.Dock="Left" Name="TextBox_Issuer" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        </DockPanel>
-                        <Label Content="Serial Number:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <TextBox Name="TextBox_Serial" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"></ColumnDefinition>
-                                <ColumnDefinition Width="8"></ColumnDefinition>
-                                <ColumnDefinition Width="*"></ColumnDefinition>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <Label Content="Not Before:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                                <TextBox Name="TextBox_NotBefore" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                            </StackPanel>
-                            <StackPanel  Grid.Column="2">
-                                <Label Content="Not After:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                                <TextBox Name="TextBox_NotAfter" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                            </StackPanel>
+        <Grid DockPanel.Dock="Top">
+            <TabControl Name="TabControl" FlowDirection="LeftToRight" SelectionChanged="TabControl_SelectionChanged">
+                <TabItem Name="Tab_CertInfo">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                            <Image Source="{StaticResource ImageSource_Certificate}" Stretch="None"/>
+                            <TextBlock Text="Certificate" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Grid>
+                        <Grid Visibility="Collapsed" Name="Panel_Placeholder" ToolTip="You can drop a certificate file here, or copy PEM data to the clipboard!">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="auto"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="auto"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Image Grid.Row="1" Source="{StaticResource ImageSource_Banner}" Stretch="None" MouseDown="Image_Placeholder_MouseDown" Cursor="Hand"/>
+                            <Label Grid.Row="3" Name="Label_Placeholder" Background="DarkRed" Foreground="WhiteSmoke" FontFamily="{StaticResource HackFont}" HorizontalAlignment="Center" Padding="8,2,8,2" Visibility="Hidden" MouseDown="Label_Placeholder_MouseDown" Margin="0,0,0,4"></Label>
                         </Grid>
-                        <Label Content="Basicy Constraints:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <TextBox Name="TextBox_BasicConstraints" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        <Label Content="Key Usage:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <TextBox Name="TextBox_KeyUsage" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        <Label Content="Extended Key Usage:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <TextBox Name="TextBox_ExtKeyUsage" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        <Label Content="Subject Alternative Names:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <StackPanel Margin="8,8,8,14" Name="Panel_CertInfo">
+                            <Label Content="Subject DN:" FontWeight="SemiBold" Margin="0,0,0,0" Padding="0"></Label>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_Subject}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_SubjectDN" Click="Button_SubjectDN_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                                <TextBox DockPanel.Dock="Left" Name="TextBox_Subject" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                            </DockPanel>
+                            <Label Content="Issuer DN:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_Issuer}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_IssuerDN" Click="Button_IssuerDN_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                                <TextBox DockPanel.Dock="Left" Name="TextBox_Issuer" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                            </DockPanel>
+                            <Label Content="Serial Number:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_Serial}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_Serial" Click="Button_Serial_Click"><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></Button>
+                                <TextBox DockPanel.Dock="Left" Name="TextBox_Serial" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                            </DockPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"></ColumnDefinition>
+                                    <ColumnDefinition Width="8"></ColumnDefinition>
+                                    <ColumnDefinition Width="*"></ColumnDefinition>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <Label Content="Not Before:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                                    <Grid Margin="0,2,0,0">
+                                        <TextBox Name="TextBox_NotBefore" Style="{StaticResource CertProperty}"></TextBox>
+                                        <Image Source="{StaticResource ImageSource_Valid}" Name="Image_NotBefore_Valid" Stretch="None" HorizontalAlignment="Right" Margin="0,0,6,0" IsHitTestVisible="False"/>
+                                        <Image Source="{StaticResource ImageSource_Expired}" Name="Image_NotBefore_Expired" Stretch="None" HorizontalAlignment="Right" Margin="0,0,6,0" IsHitTestVisible="False" Visibility="Hidden"/>
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel  Grid.Column="2">
+                                    <Label Content="Not After:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                                    <Grid Margin="0,2,0,0">
+                                        <TextBox Name="TextBox_NotAfter" Style="{StaticResource CertProperty}"></TextBox>
+                                        <Image Source="{StaticResource ImageSource_Valid}" Name="Image_NotAfter_Valid"  Stretch="None" HorizontalAlignment="Right" Margin="0,0,6,0" IsHitTestVisible="False"/>
+                                        <Image Source="{StaticResource ImageSource_Expired}" Name="Image_NotAfter_Expired" Stretch="None" HorizontalAlignment="Right" Margin="0,0,6,0" IsHitTestVisible="False" Visibility="Hidden"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                            <Label Content="Subject Alternative Names:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_SubjAltNames}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_SubjAltNames" Click="Button_SubjAltNames_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                                <TextBox DockPanel.Dock="Left" Name="TextBox_SubjAltNames" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                             </DockPanel>
+                            <Label Content="Public Key:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_PublicKey}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_PublicKey" Click="Button_PublicKey_Click"><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></Button>
+                                <TextBox Name="TextBox_PublicKey" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                            </DockPanel>
+                            <Label Content="Signature Algorithm:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_SignAlgo}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_SignAlgo" Click="Button_SignAlgo_Click" ContextMenu="{StaticResource Menu_DigestAlgo}"><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></Button>
+                                <TextBox Name="TextBox_SignAlgo" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                            </DockPanel>
+                            <Label Content="Fingerprint:" Name="Label_Fingerprint" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_Fingerprint}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_Fingerprint" Click="Button_Fingerprint_Click" ContextMenu="{StaticResource Menu_DigestAlgo}"><Image Source="{StaticResource ImageSource_Settings}" Stretch="None"/></Button>
+                                <TextBox DockPanel.Dock="Left" Name="TextBox_Fingerprint" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                            </DockPanel>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+                <TabItem Name="Tab_Extensions" IsEnabled="False">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                            <Image Source="{StaticResource ImageSource_Extensions}" Stretch="None"/>
+                            <TextBlock Text="Extensions" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <StackPanel Margin="8,8,8,14">
+                        <Label Content="Basicy Constraints:" FontWeight="SemiBold" Margin="0,0,0,0" Padding="0"></Label>
                         <DockPanel>
-                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_SubjAltNames}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Click="Button_SubjAltNames_Click"><Image Source="{StaticResource ImageSource_Information}" Stretch="None"/></Button>
-                            <TextBox DockPanel.Dock="Left" Name="TextBox_SubjAltNames" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                         </DockPanel>
-                        <Label Content="Public Key:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <TextBox Name="TextBox_PublicKey" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        <Label Content="Signature Algorithm:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <TextBox Name="TextBox_SignAlgo" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
-                        <Label Content="Fingerprint:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
-                        <TextBox Name="TextBox_DigestSha256" Margin="0,2,0,8" Style="{StaticResource CertProperty}"></TextBox>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_BasicConstraints}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_BasicConstraints" Click="Button_BasicConstraints_Click"><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></Button>
+                            <TextBox Name="TextBox_BasicConstraints" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
+                        <Label Content="Key Usage:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_KeyUsage}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_KeyUsage" Click="Button_KeyUsage_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                            <TextBox DockPanel.Dock="Left" Name="TextBox_KeyUsage" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
+                        <Label Content="Extended Key Usage:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_ExtKeyUsage}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_ExtKeyUsage" Click="Button_ExtKeyUsage_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                            <TextBox DockPanel.Dock="Left" Name="TextBox_ExtKeyUsage" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
+                        <Label Content="Subject Key Identifier:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_SubjectKeyId}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_SubjectKeyId" Click="Button_SubjectKeyId_Click"><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></Button>
+                            <TextBox DockPanel.Dock="Left" Name="TextBox_SubjectKeyId" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
+                        <Label Content="Authority Key Identifier:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_AuthorityKeyId}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_AuthorityKeyId" Click="Button_AuthorityKeyId_Click"><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></Button>
+                            <TextBox DockPanel.Dock="Left" Name="TextBox_AuthorityKeyId" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
+                        <Label Content="Authority Information Access:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_AuthorityInformation}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_AuthorityInformation" Click="Button_AuthorityInformation_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                            <TextBox DockPanel.Dock="Left" Name="TextBox_AuthorityInformation" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
+                        <Label Content="OCSP Server:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_OcspServer}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_OcspServer" Click="Button_OcspServer_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                            <TextBox DockPanel.Dock="Left" Name="TextBox_OcspServer" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
+                        <Label Content="CRL Distribution Point:" FontWeight="SemiBold" Margin="0,8,0,0" Padding="0"></Label>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Height="{Binding ActualHeight, ElementName=TextBox_CrlDistPoint}" MinWidth="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" VerticalAlignment="Bottom" Margin="1,0,0,0" Name="Button_CrlDistPoint" Click="Button_CrlDistPoint_Click"><Image Source="{StaticResource ImageSource_Report}" Stretch="None"/></Button>
+                            <TextBox DockPanel.Dock="Left" Name="TextBox_CrlDistPoint" Margin="0,2,0,0" Style="{StaticResource CertProperty}"></TextBox>
+                        </DockPanel>
                     </StackPanel>
-                </Grid>
-            </TabItem>
-            <TabItem  Name="Tab_Asn1Data" IsEnabled="False">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
-                        <Image Source="{StaticResource ImageSource_Details}" Stretch="None"/>
-                        <TextBlock Text="ASN.1 Outline" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <TextBox Name="TextBox_Asn1Data" Margin="8" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
-            </TabItem>
-            <TabItem  Name="Tab_PemData" IsEnabled="False">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
-                        <Image Source="{StaticResource ImageSource_Clipboard}" Stretch="None"/>
-                        <TextBlock Text="PEM Data" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <TextBox Name="TextBox_PemData" Margin="8" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
-            </TabItem>
-        </TabControl>
+                </TabItem>
+                <TabItem  Name="Tab_Asn1Data" IsEnabled="False">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                            <Image Source="{StaticResource ImageSource_Details}" Stretch="None"/>
+                            <TextBlock Text="ASN.1 Outline" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <TextBox Name="TextBox_Asn1Data" Margin="8,8,8,14" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
+                </TabItem>
+                <TabItem  Name="Tab_PemData" IsEnabled="False">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                            <Image Source="{StaticResource ImageSource_Clipboard}" Stretch="None"/>
+                            <TextBlock Text="PEM Data" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <TextBox Name="TextBox_PemData" Margin="8,8,8,14" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
+                </TabItem>
+            </TabControl>
+            <Image Source="{StaticResource ImageSource_Help}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" MouseUp="Image_About_MouseUp" Style="{StaticResource Opacity}"/>
+        </Grid>
     </DockPanel>
 </Window>
