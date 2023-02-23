@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Media;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -91,7 +92,7 @@ namespace CertViewer.Dialogs
                 {
                     sb.Append(element.Key.Text).Append(": ").Append(element.Value.Text).Append(eol);
                 }
-                Clipboard.SetText(sb.ToString());
+                TryCopyToClipboard(sb.ToString());
                 SystemSounds.Beep.Play();
             }
             catch { }
@@ -145,6 +146,34 @@ namespace CertViewer.Dialogs
                 return (text.Length > maxLength) ? $"{text.Substring(0, maxLength - 3)}..." : text;
             }
             return string.Empty;
+        }
+
+        private static void TryCopyToClipboard(string text)
+        {
+            if (IsNotEmpty(text))
+            {
+                DoWithRetry(32, () => { Clipboard.SetText(text); return true; });
+            }
+        }
+
+        private static T DoWithRetry<T>(int maxTries, Func<T> operation)
+        {
+            for (int retry = 0; retry < maxTries; ++retry)
+            {
+                try
+                {
+                    return operation();
+                }
+                catch { }
+                Thread.Sleep(retry);
+            }
+            return operation();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsNotEmpty(string text)
+        {
+            return !string.IsNullOrEmpty(text);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

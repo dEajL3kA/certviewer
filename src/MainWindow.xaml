@@ -48,6 +48,8 @@
         <BitmapImage x:Key="ImageSource_Report" UriSource="Resources/ico_report.png"/>
         <BitmapImage x:Key="ImageSource_Settings" UriSource="Resources/ico_settings.png"/>
         <BitmapImage x:Key="ImageSource_Valid" UriSource="Resources/ico_valid.png"/>
+        <SolidColorBrush x:Key="HyperlinkColor_Default" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}"/>
+        <SolidColorBrush x:Key="HyperlinkColor_Hovered" Color="{DynamicResource {x:Static SystemColors.HotTrackColorKey}}"/>
         <Style TargetType="{x:Type TextBox}" x:Key="CertProperty">
             <Setter Property="FontFamily" Value="{StaticResource HackFont}"/>
             <Setter Property="IsReadOnly" Value="True"/>
@@ -71,11 +73,20 @@
                 </Style>
             </Style.Resources>
         </Style>
-        <Style x:Key="Opacity" TargetType="FrameworkElement">
+        <Style x:Key="HotButton" TargetType="FrameworkElement">
             <Setter Property="Opacity" Value="0.8"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="true">
                     <Setter Property="StackPanel.Opacity" Value="1" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Hyperlink" TargetType="Control">
+            <Setter Property="Foreground" Value="{StaticResource HyperlinkColor_Default}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="true">
+                    <Setter Property="Foreground" Value="{StaticResource HyperlinkColor_Hovered}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -240,7 +251,12 @@
                             <TextBlock Text="ASN.1 Outline" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <TextBox Name="TextBox_Asn1Data" Margin="8,8,8,14" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
+                    <DockPanel Margin="8,8,8,8">
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+                            <Label Padding="0" Style="{StaticResource Hyperlink}" Content="Copy to Clipboard" MouseUp="Label_Asn1Data_MouseUp"></Label>
+                        </StackPanel>
+                        <TextBox DockPanel.Dock="Top" Name="TextBox_Asn1Data" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
+                    </DockPanel>
                 </TabItem>
                 <TabItem  Name="Tab_PemData" IsEnabled="False">
                     <TabItem.Header>
@@ -249,10 +265,15 @@
                             <TextBlock Text="PEM Data" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <TextBox Name="TextBox_PemData" Margin="8,8,8,14" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
+                    <DockPanel Margin="8,8,8,8">
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+                            <Label Padding="0" Style="{StaticResource Hyperlink}" Content="Copy to Clipboard" MouseUp="Label_PemData_MouseUp"></Label>
+                        </StackPanel>
+                        <TextBox DockPanel.Dock="Top" Name="TextBox_PemData" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap"></TextBox>
+                    </DockPanel>
                 </TabItem>
             </TabControl>
-            <Image Source="{StaticResource ImageSource_Help}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" MouseUp="Image_About_MouseUp" Style="{StaticResource Opacity}"/>
+            <Image Source="{StaticResource ImageSource_Help}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" MouseUp="Image_About_MouseUp" Style="{StaticResource HotButton}"/>
         </Grid>
     </DockPanel>
 </Window>

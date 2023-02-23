@@ -28,13 +28,12 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Text;
-using System.Threading.Tasks;
 using System.Threading;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Threading;
 using System.Windows;
+using System.Windows.Threading;
 
 using Microsoft.Win32;
 
@@ -73,9 +72,10 @@ namespace CertViewer
         private static readonly Lazy<Tuple<Version, Version, DateTime>> PROGRAM_VERSION_INFORMATION = new Lazy<Tuple<Version, Version, DateTime>>(GetVersionAndBuildDate);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> EXT_KEY_USAGE = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_ExtKeyUsage);
+        private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> AUTH_INFO_ACCESS = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_AuthInfoAccess);
         private static readonly Lazy<IDictionary<ECCurve, string>> ECC_CURVE_NAMES = new Lazy<IDictionary<ECCurve, string>>(CreateLookup_EccCurveNames);
 
-        private static readonly Lazy<Regex> PEM_CERTIFICATE = new Lazy<Regex>(() => new Regex(@"-{3,}\s*BEGIN\s+CERTIFICATE\s*-{3,}(.+)-{3,}\s*END\s+CERTIFICATE\s*-{3,}", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
+        private static readonly Lazy<Regex> PEM_CERTIFICATE = new Lazy<Regex>(() => new Regex(@"-{3,}\s*BEGIN\s+CERTIFICATE\s*-{3,}([\t\n\v\f\r\x20-\x7E]+)-{3,}\s*END\s+CERTIFICATE\s*-{3,}", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
         private static readonly Lazy<Regex> INVALID_BASE64_CHARS = new Lazy<Regex>(() => new Regex(@"[^A-Za-z0-9+/]+", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
         private static readonly Lazy<Regex> CONTROL_CHARACTERS = new Lazy<Regex>(() => new Regex(@"[\u0000-\u001F\u007F]", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
 
@@ -86,6 +86,7 @@ namespace CertViewer
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
         public bool EnableMonitorClipboard { get; private set; } = true;
 
+        private readonly Flag m_ignoreDrawClipboard = new Flag { Value = false };
         private readonly IDictionary<TabItem, int> m_tabs;
         private readonly ISet<TabItem> m_tabInitialized = new HashSet<TabItem>();
 
@@ -148,9 +149,9 @@ namespace CertViewer
             try
             {
                 e.Effects = ((OwnedWindows.Count == 0) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
-                e.Handled = true;
             }
             catch { }
+            e.Handled = true;
         }
 
         private void Window_PreviewDragLeave(object sender, DragEventArgs e)
@@ -160,29 +161,22 @@ namespace CertViewer
 
         private void Window_PreviewDrop(object sender, DragEventArgs e)
         {
-            if (OwnedWindows.Count == 0)
+            try
             {
-                try
+                if (OwnedWindows.Count == 0)
                 {
                     string[] droppedFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
                     if (IsNotNull(droppedFiles))
                     {
-                        foreach (string currentFile in droppedFiles)
+                        if (ParseCertificateFile(droppedFiles))
                         {
-                            try
-                            {
-                                if (ParseCertificateFile(currentFile))
-                                {
-                                    e.Handled = true;
-                                    return;
-                                }
-                            }
-                            catch { }
+                            return;
                         }
                     }
                 }
-                catch { }
             }
+            catch { }
+            e.Handled = true;
         }
 
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -204,7 +198,7 @@ namespace CertViewer
             switch (msg)
             {
                 case WM_DRAWCLIPBOARD:
-                    if (m_initialized && EnableMonitorClipboard)
+                    if (m_initialized && EnableMonitorClipboard && (!m_ignoreDrawClipboard.Value))
                     {
                         ParseCertificateFromClipboard();
                     }
@@ -256,8 +250,11 @@ namespace CertViewer
             {
                 try
                 {
-                    TryCopyToClipboard(cert.SerialNumber.ToString(16).ToUpperInvariant());
-                    SystemSounds.Beep.Play();
+                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                    {
+                        TryCopyToClipboard(cert.SerialNumber.ToString(16).ToUpperInvariant());
+                        SystemSounds.Beep.Play();
+                    }
                 }
                 catch { }
             }
@@ -270,8 +267,11 @@ namespace CertViewer
                 try
                 {
                     int basicConstraints = cert.GetBasicConstraints();
-                    TryCopyToClipboard((basicConstraints < 0) ? "End entity certificate" : $"CA certificate, {DecodePathLenConstraint(basicConstraints)}");
-                    SystemSounds.Beep.Play();
+                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                    {
+                        TryCopyToClipboard((basicConstraints < 0) ? "End entity certificate (subject is not CA)" : $"CA certificate, max. path length: {DecodePathLenConstraint(basicConstraints)}");
+                        SystemSounds.Beep.Play();
+                    }
                 }
                 catch { }
             }
@@ -284,8 +284,12 @@ namespace CertViewer
             {
                 try
                 {
-                    TryCopyToClipboard(ParsePublicKey(cert.GetPublicKey()));
-                    SystemSounds.Beep.Play();
+                    string publicKeyInfo = ParsePublicKey(cert.GetPublicKey());
+                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                    {
+                        TryCopyToClipboard(publicKeyInfo);
+                        SystemSounds.Beep.Play();
+                    }
                 }
                 catch { }
             }
@@ -325,8 +329,11 @@ namespace CertViewer
             {
                 try
                 {
-                    TryCopyToClipboard(cert.SigAlgName);
-                    SystemSounds.Beep.Play();
+                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                    {
+                        TryCopyToClipboard(cert.SigAlgName);
+                        SystemSounds.Beep.Play();
+                    }
                 }
                 catch { }
             }
@@ -351,8 +358,11 @@ namespace CertViewer
                     SubjectKeyIdentifier subjectKeyId = GetSubjectKeyIdentifier(cert);
                     if (IsNotNull(subjectKeyId))
                     {
-                        TryCopyToClipboard(ParseSubjectKeyIdentifier(subjectKeyId));
-                        SystemSounds.Beep.Play();
+                        using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                        {
+                            TryCopyToClipboard(ParseSubjectKeyIdentifier(subjectKeyId));
+                            SystemSounds.Beep.Play();
+                        }
                     }
                 }
                 catch { }
@@ -369,8 +379,11 @@ namespace CertViewer
                     AuthorityKeyIdentifier authorityKeyId = GetAuthorityKeyIdentifier(cert);
                     if (IsNotNull(authorityKeyId))
                     {
-                        TryCopyToClipboard(ParseAuthorityKeyIdentifier(authorityKeyId));
-                        SystemSounds.Beep.Play();
+                        using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                        {
+                            TryCopyToClipboard(ParseAuthorityKeyIdentifier(authorityKeyId));
+                            SystemSounds.Beep.Play();
+                        }
                     }
                 }
                 catch { }
@@ -391,7 +404,7 @@ namespace CertViewer
             X509Certificate cert;
             if (IsNotNull(cert = Certificate))
             {
-                ShowAuthorityInformationDetails(GetAuthorityInformationAccess(cert), true);
+                ShowAuthorityInformationDetails(GetAuthorityInformationAccess(cert));
             }
         }
 
@@ -455,8 +468,11 @@ namespace CertViewer
                 try
                 {
                     string digestHex = Hex.ToHexString(CalculateDigest(cert)).ToUpperInvariant();
-                    TryCopyToClipboard($"{Enum.GetName(typeof(DigestAlgo), DigestAlgorithm)}={digestHex}");
-                    SystemSounds.Beep.Play();
+                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                    {
+                        TryCopyToClipboard($"{Enum.GetName(typeof(DigestAlgo), DigestAlgorithm)}={digestHex}");
+                        SystemSounds.Beep.Play();
+                    }
                 }
                 catch { }
             }
@@ -513,6 +529,30 @@ namespace CertViewer
                 if (openFileDialog.ShowDialog().GetValueOrDefault(false))
                 {
                     ParseCertificateFile(openFileDialog.FileName);
+                }
+            }
+        }
+
+        private void Label_Asn1Data_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
+            {
+                using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                {
+                    TryCopyToClipboard(TextBox_Asn1Data.Text);
+                    SystemSounds.Beep.Play();
+                }
+            }
+        }
+
+        private void Label_PemData_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
+            {
+                using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                {
+                    TryCopyToClipboard(TextBox_PemData.Text);
+                    SystemSounds.Beep.Play();
                 }
             }
         }
@@ -593,19 +633,10 @@ namespace CertViewer
         {
             try
             {
-                string[] commandLineArgs = Environment.GetCommandLineArgs();
-                bool flag = false;
-                foreach (string filename in commandLineArgs.Skip(1))
+                string[] commandLineArgs = FilterCliArguments(Environment.GetCommandLineArgs().Skip(1)).ToArray();
+                if (IsNotEmpty(commandLineArgs))
                 {
-                    if ((!flag) && filename.StartsWith("--", StringComparison.Ordinal))
-                    {
-                        if (filename.Equals("--", StringComparison.Ordinal))
-                        {
-                            flag = true;
-                        }
-                        continue;
-                    }
-                    if (ParseCertificateFile(filename))
+                    if (ParseCertificateFile(commandLineArgs))
                     {
                         return true;
                     }
@@ -615,7 +646,7 @@ namespace CertViewer
             return false;
         }
 
-        private void ParseCertificateFromClipboard()
+        private bool ParseCertificateFromClipboard()
         {
             using (OverrideCursor busy = new OverrideCursor())
             {
@@ -626,43 +657,15 @@ namespace CertViewer
                     if (IsNotEmpty(text = TryPasteFromClipboard()))
                     {
                         Match match = PEM_CERTIFICATE.Value.Match(text);
-                        if (match.Success)
+                        while (match.Success)
                         {
                             Title = $"Clipboard \u2013 {BASE_TITLE}";
-                            ParseCertificateData(match.Groups[1].Value);
+                            if (ParseCertificateData(match.Groups[1].Value))
+                            {
+                                return true;
+                            }
+                            match = match.NextMatch();
                         }
-                    }
-                }
-                catch (Exception e)
-                {
-                    TabControl.SelectedItem = Tab_CertInfo;
-                    Certificate = null;
-                    ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
-                }
-            }
-        }
-
-        private bool ParseCertificateFile(string fileName)
-        {
-            using (OverrideCursor busy = new OverrideCursor())
-            {
-                HideErrorText();
-                try
-                {
-                    byte[] data = ReadFileContents(fileName, MAX_LENGTH);
-                    if (IsNotEmpty(data))
-                    {
-                        Title = $"{GetBaseName(fileName)} \u2013 {BASE_TITLE}";
-                        Match match = PEM_CERTIFICATE.Value.Match(Encoding.UTF8.GetString(data));
-                        if (match.Success)
-                        {
-                            ParseCertificateData(match.Groups[1].Value);
-                        }
-                        else
-                        {
-                            ParseCertificateData(data);
-                        }
-                        return true;
                     }
                 }
                 catch (Exception e)
@@ -675,11 +678,57 @@ namespace CertViewer
             return false;
         }
 
-        private void ParseCertificateData(string pemText)
+        private bool ParseCertificateFile(params string[] fileNames)
+        {
+            using (OverrideCursor busy = new OverrideCursor())
+            {
+                HideErrorText();
+                if (IsNotEmpty(fileNames))
+                {
+                    try
+                    {
+                        foreach (string fileName in fileNames)
+                        {
+                            byte[] data = ReadFileContents(fileName, MAX_LENGTH);
+                            if (IsNotEmpty(data))
+                            {
+                                Title = $"{GetBaseName(fileName)} \u2013 {BASE_TITLE}";
+                                Match match = PEM_CERTIFICATE.Value.Match(Encoding.UTF8.GetString(data));
+                                while (match.Success)
+                                {
+                                    if (ParseCertificateData(match.Groups[1].Value))
+                                    {
+                                        return true;
+                                    }
+                                    match = match.NextMatch();
+                                }
+                                return ParseCertificateData(data);
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        TabControl.SelectedItem = Tab_CertInfo;
+                        Certificate = null;
+                        ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
+                    }
+                }
+            }
+            return false;
+        }
+
+        private bool ParseCertificateData(string base64text)
         {
             try
             {
-                ParseCertificateData(Convert.FromBase64String(AddPadding(INVALID_BASE64_CHARS.Value.Replace(pemText, string.Empty))));
+                if (IsNotEmpty(base64text))
+                {
+                    base64text = INVALID_BASE64_CHARS.Value.Replace(base64text, string.Empty);
+                    if (base64text.Length > 0)
+                    {
+                        return ParseCertificateData(Convert.FromBase64String(AddPadding(base64text)));
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -687,15 +736,17 @@ namespace CertViewer
                 Certificate = null;
                 ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
             }
+            return false;
         }
 
-        private void ParseCertificateData(byte[] data)
+        private bool ParseCertificateData(byte[] data)
         {
+            bool success = false;
             try
             {
                 X509Certificate cert = new X509CertificateParser().ReadCertificate(data);
                 m_tabInitialized.Clear();
-                if (IsNotNull(Certificate = cert))
+                if (success = IsNotNull(Certificate = cert))
                 {
                     string subjectDN = X500NameToRFC2253(cert.SubjectDN);
                     SetText(TextBox_Subject, DefaultString(subjectDN, UNSPECIFIED));
@@ -735,6 +786,7 @@ namespace CertViewer
                 Certificate = null;
                 ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
             }
+            return success;
         }
 
         private void InitializeTab(int selectedTabIndex)
@@ -771,10 +823,10 @@ namespace CertViewer
                             Button_OcspServer.IsEnabled = IsNotEmpty(authorityInformationAccess.Item2);
                             break;
                         case 2:
-                            SetText(TextBox_Asn1Data, CreateAsn1Dump(cert.CertificateStructure));
+                            SetText(TextBox_Asn1Data, CreateAsn1Dump(cert), false);
                             break;
                         case 3:
-                            SetText(TextBox_PemData, CreatePemData(cert.GetEncoded()));
+                            SetText(TextBox_PemData, CreatePemData(cert.GetEncoded()), false);
                             break;
                     }
                 }
@@ -859,22 +911,22 @@ namespace CertViewer
             }
         }
         
-        private void ShowAuthorityInformationDetails(AuthorityInformationAccess authorityInformationAccess, bool showOcsp = false)
+        private void ShowAuthorityInformationDetails(AuthorityInformationAccess authorityInformationAccess)
         {
             if (IsNotNull(authorityInformationAccess))
             {
                 using (OverrideCursor busy = new OverrideCursor())
                 {
-                    DerObjectIdentifier identifier = showOcsp ? X509ObjectIdentifiers.IdADOcsp : X509ObjectIdentifiers.IdADCAIssuers;
+                    IDictionary<DerObjectIdentifier, string> method = AUTH_INFO_ACCESS.Value;
                     IEnumerable<KeyValuePair<string, string>> items = authorityInformationAccess.GetAccessDescriptions()
-                        .Where(descr => identifier.Equals(descr.AccessMethod))
-                        .Select(descr => descr.AccessLocation)
-                        .Where(IsNotNull)
-                        .Select(name => new KeyValuePair<string, string>(DecodeGeneralNameType(name.TagNo), EscapeString(DecodeGeneralNameValue(name.Name), false)))
-                        .Where(item => IsNotEmpty(item.Key) && IsNotEmpty(item.Value));
+                        .Select(descr => Tuple.Create(GetValueOrDefault(method, descr.AccessMethod, string.Empty), descr.AccessLocation))
+                        .Where(descr => IsNotEmpty(descr.Item1) && IsNotNull(descr.Item2))
+                        .Select(descr => Tuple.Create(descr.Item1, DecodeGeneralNameType(descr.Item2.TagNo), DecodeGeneralNameValue(descr.Item2.Name)))
+                        .Where(descr => IsNotEmpty(descr.Item2) && IsNotNull(descr.Item3))
+                        .Select(descr => new KeyValuePair<string, string>($"{descr.Item1}.{descr.Item2}", EscapeString(descr.Item3, false)));
                     if (items.Any())
                     {
-                        DetailsView viewer = new DetailsView(items) { Owner = this, Title = showOcsp ? "OCSP Server" : "Authority Information Access" };
+                        DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Authority Information Access" };
                         viewer.ShowDialog(busy);
                     }
                 }
@@ -892,9 +944,10 @@ namespace CertViewer
                         .Where(point => IsNotNull(point) && (point.Type == 0))
                         .Select(point => point.Name)
                         .OfType<GeneralNames>()
-                        .SelectMany(names => names.GetNames())
-                        .Select(name => new KeyValuePair<string, string>(DecodeGeneralNameType(name.TagNo), EscapeString(DecodeGeneralNameValue(name.Name), false)))
-                        .Where(item => IsNotEmpty(item.Key) && IsNotEmpty(item.Value));
+                        .SelectMany((names, index) => names.GetNames().Select(name => Tuple.Create(index, name.TagNo, name.Name)))
+                        .Select(name => Tuple.Create(name.Item1, DecodeGeneralNameType(name.Item2), EscapeString(DecodeGeneralNameValue(name.Item3), false)))
+                        .Where(name => IsNotEmpty(name.Item2) && IsNotEmpty(name.Item3))
+                        .Select(name => new KeyValuePair<string, string>($"distPoint[{name.Item1}].{name.Item2}", name.Item3));
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items) { Owner = this, Title = "CRL Distribution Points" };
@@ -1037,6 +1090,16 @@ namespace CertViewer
                 { MakeOid("1.3.6.1.4.1.311.21.19"),        "dsEmailReplication"   },
                 { MakeOid("1.3.6.1.4.1.311.21.5"),         "caExchange"           },
                 { MakeOid("1.3.6.1.5.5.8.2.2"),            "ikeIntermediate"      }
+            };
+            return new ReadOnlyDictionary<DerObjectIdentifier, string>(builder);
+        }
+
+        private static IDictionary<DerObjectIdentifier, string> CreateLookup_AuthInfoAccess()
+        {
+            Dictionary<DerObjectIdentifier, string> builder = new Dictionary<DerObjectIdentifier, string>
+            {
+                { X509ObjectIdentifiers.IdADOcsp,      "ocsp"     },
+                { X509ObjectIdentifiers.IdADCAIssuers, "caIssuer" }
             };
             return new ReadOnlyDictionary<DerObjectIdentifier, string>(builder);
         }
@@ -1251,17 +1314,17 @@ namespace CertViewer
             {
                 switch (type.Value)
                 {
-                    case 0: return "otherName";
-                    case 1: return "rfc822Name";
-                    case 2: return "dNSName";
-                    case 3: return "x400Address";
-                    case 4: return "directoryName";
-                    case 5: return "ediPartyName";
-                    case 6: return "uniformResourceIdentifier";
-                    case 7: return "iPAddress";
-                    case 8: return "registeredID";
+                    case GeneralName.OtherName:                 return "otherName";
+                    case GeneralName.Rfc822Name:                return "rfc822Name";
+                    case GeneralName.DnsName:                   return "dNSName";
+                    case GeneralName.X400Address:               return "x400Address";
+                    case GeneralName.DirectoryName:             return "directoryName";
+                    case GeneralName.EdiPartyName:              return "ediPartyName";
+                    case GeneralName.UniformResourceIdentifier: return "uri";
+                    case GeneralName.IPAddress:                 return "iPAddress";
+                    case GeneralName.RegisteredID:              return "registeredID";
                 }
-                return $"#{type.Value}";
+                return $"type#{type.Value}";
             }
             return string.Empty;
         }
@@ -1288,9 +1351,17 @@ namespace CertViewer
             {
                 return ((DerStringBase)value).GetString();
             }
+            else if (value is DerObjectIdentifier)
+            {
+                return ((DerObjectIdentifier)value).Id;
+            }
             else if (value is DerOctetString)
             {
                 return Hex.ToHexString(((DerOctetString)value).GetOctets()).ToUpperInvariant();
+            }
+            else if (value is GeneralName)
+            {
+                return DecodeGeneralNameValue(((GeneralName)value).Name);
             }
             else if (IsNotNull(value))
             {
@@ -1406,13 +1477,13 @@ namespace CertViewer
             return string.Empty;
         }
 
-        private static string CreateAsn1Dump(Asn1Encodable data)
+        private static string CreateAsn1Dump(X509Certificate cert)
         {
-            if (IsNotNull(data))
+            if (IsNotNull(cert))
             {
                 try
                 {
-                    return Asn1Dump.DumpAsString(data);
+                    return Asn1Dump.DumpAsString(cert.CertificateStructure, true);
                 }
                 catch { }
             }
@@ -1461,13 +1532,13 @@ namespace CertViewer
             }
         }
 
-        private static void SetText(TextBox textBox, string text)
+        private static void SetText(TextBox textBox, string text, bool trim = true)
         {
             if (IsNotNull(textBox))
             {
                 int maxLength = textBox.MaxLength;
                 maxLength = (maxLength > 0) ? Math.Max(maxLength, 4) : int.MaxValue;
-                text = IsNotEmpty(text) ? text.Trim() : string.Empty;
+                text = trim ? TrimToEmpty(text) : DefaultString(text);
                 textBox.Text = (text.Length > maxLength) ? $"{text.Substring(0, maxLength - 3)}..." : text;
             }
         }
@@ -1527,9 +1598,29 @@ namespace CertViewer
             return dateOffset;
         }
 
-        private static string DefaultString(string text, string defaultString)
+        private static IEnumerable<string> FilterCliArguments(IEnumerable<string> arguments)
         {
-            return IsNotEmpty(text) ? text : defaultString;
+            if (IsNotEmpty(arguments))
+            {
+                bool flag = false;
+                foreach (string argument in arguments)
+                {
+                    if ((!flag) && argument.StartsWith("--", StringComparison.Ordinal))
+                    {
+                        if (argument.Equals("--", StringComparison.Ordinal))
+                        {
+                            flag = true;
+                        }
+                        continue;
+                    }
+                    yield return argument;
+                }
+            }
+        }
+
+        private static string DefaultString(string text, string defaultString = null)
+        {
+            return IsNotEmpty(text) ? text : (IsNotEmpty(defaultString) ? defaultString : string.Empty);
         }
 
         private static string EscapeString(string str, bool escapeComma = true)
@@ -1576,48 +1667,34 @@ namespace CertViewer
 
         private static FileStream TryOpenFile(string filePath, FileMode mode, FileAccess access)
         {
-            for (int i = 1; i <= 32; ++i)
-            {
-                try
-                {
-                    return File.Open(filePath, mode, access);
-                }
-                catch { }
-                Thread.Sleep(i);
-            }
-            return File.Open(filePath, mode, access);
+            return DoWithRetry(32, () => File.Open(filePath, mode, access));
         }
 
         private static string TryPasteFromClipboard()
         {
-            for (int i = 1; i <= 16; ++i)
-            {
-                try
-                {
-                    return Clipboard.GetText();
-                }
-                catch { }
-                Thread.Sleep(i);
-            }
-            return Clipboard.GetText();
+            return DoWithRetry(32, () => Clipboard.GetText());
         }
 
         private static void TryCopyToClipboard(string text)
         {
             if (IsNotEmpty(text))
             {
-                for (int i = 1; i <= 16; ++i)
-                {
-                    try
-                    {
-                        Clipboard.SetText(text);
-                        return;
-                    }
-                    catch { }
-                    Thread.Sleep(i);
-                }
-                Clipboard.SetText(text);
+                DoWithRetry(32, () => { Clipboard.SetText(text); return true; });
             }
+        }
+
+        private static T DoWithRetry<T>(int maxTries, Func<T> operation)
+        {
+            for (int retry = 0; retry < maxTries; ++retry)
+            {
+                try
+                {
+                    return operation();
+                }
+                catch { }
+                Thread.Sleep(retry);
+            }
+            return operation();
         }
 
         private object GetBaseName(string fileName)
@@ -1725,6 +1802,12 @@ namespace CertViewer
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsNotEmpty<T>(IEnumerable<T> items)
+        {
+            return (!ReferenceEquals(items, null)) && items.Any();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string TrimToEmpty(string text)
         {
             return (!ReferenceEquals(text, null)) ? text.Trim() : string.Empty;
@@ -1748,6 +1831,38 @@ namespace CertViewer
                 }
             }
         }
+
+        private class SetAndRestore : IDisposable
+        {
+            private volatile bool m_disposed = false;
+            private readonly Flag m_flag;
+            private readonly Dispatcher m_dispatcher;
+
+            public SetAndRestore(Flag flag, Dispatcher dispatcher)
+            {
+                if (!(IsNotNull(m_flag = flag) && IsNotNull(m_dispatcher = dispatcher)))
+                {
+                    throw new ArgumentNullException("Parameters must not be null!");
+                }
+                m_flag.Value = true;
+            }
+
+            public void Dispose()
+            {
+                if (!m_disposed)
+                {
+                    m_disposed = true;
+                    m_dispatcher.Invoke(RestoreFlagValue, DispatcherPriority.Background);
+                }
+            }
+
+            private void RestoreFlagValue()
+            {
+                m_flag.Value = false;
+            }
+        }
+
+        private class Flag { public bool Value; };
 
         // ==================================================================
         // Native Methods
