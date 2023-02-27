@@ -1,14 +1,14 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Security;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using Org.BouncyCastle.X509;
+using Org.BouncyCastle.Asn1;
 
 namespace CertViewer
 {
-    /// <summary>
-    /// Interaktionslogik für "App.xaml"
-    /// </summary>
     public partial class App : Application
     {
         public App()
@@ -18,24 +18,41 @@ namespace CertViewer
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            typeof(X509Certificate).Equals(null);
+            const ushort MAX_KEY_SIZE = 32768;
             try
             {
-                if (Array.Exists(e.Args, str => StrCaseCmp(str, "--render-mode=software")) || StrCaseCmp(Environment.GetEnvironmentVariable("CERTVIEWER_RENDER_MODE"), "software"))
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.EC.Fp_MaxSize", MAX_KEY_SIZE.ToString());
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.Rsa.MaxSize", MAX_KEY_SIZE.ToString());
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.Asn1.AllowUnsafeInteger", string.Empty);
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.EC.Fp_Certainty", string.Empty);
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.Fpe.Disable", string.Empty);
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.Fpe.Disable_Ff1", string.Empty);
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.Pkcs1.Strict", string.Empty);
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.Pkcs12.IgnoreUselessPassword", string.Empty);
+                Environment.SetEnvironmentVariable("Org.BouncyCastle.X509.Allow_Non-DER_TBSCert", string.Empty);
+            }
+            catch { }
+            try
+            {
+                if (Array.Exists(e.Args, str => StrCaseCmp(str, "--render-mode=software")) || StrCaseCmp(Environment.GetEnvironmentVariable("CertViewer.RenderMode"), "software"))
                 {
                     RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
                 }
             }
             catch { }
+            Require(typeof(Asn1Encodable));
         }
 
         private static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args)
         {
-            Exception exception;
-            if (!ReferenceEquals(exception = args.ExceptionObject as Exception, null))
+            try
             {
-                MessageBox.Show("Unhandeled exception error:\n\n" + exception.Message, exception.GetType().Name, MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.None, MessageBoxOptions.ServiceNotification);
+                if (args.ExceptionObject is Exception exception)
+                {
+                    FatalAppExit(0, $"{exception.GetType().Name}: {exception.Message}");
+                }
             }
+            catch { }
             Environment.Exit(-1);
         }
 
@@ -47,5 +64,12 @@ namespace CertViewer
             }
             return false;
         }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void Require(Type _) { }
+
+        [DllImport("kernel32.dll", CallingConvention=CallingConvention.Winapi, ExactSpelling=true, CharSet=CharSet.Unicode, EntryPoint="FatalAppExitW")]
+        [SuppressUnmanagedCodeSecurity]
+        private static extern void FatalAppExit(uint reserved, string message);
     }
 }

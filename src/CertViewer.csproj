@@ -49,6 +49,9 @@
   <PropertyGroup>
     <ApplicationIcon>Resources\certificate.ico</ApplicationIcon>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>CertViewer.App</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />

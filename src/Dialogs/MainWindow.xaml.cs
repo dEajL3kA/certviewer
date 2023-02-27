@@ -167,10 +167,7 @@ namespace CertViewer.Dialogs
                     string[] droppedFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
                     if (IsNotNull(droppedFiles))
                     {
-                        if (ParseCertificateFile(droppedFiles))
-                        {
-                            return;
-                        }
+                        ParseCertificateFile(droppedFiles);
                     }
                 }
             }
@@ -596,10 +593,8 @@ namespace CertViewer.Dialogs
                 string[] commandLineArgs = FilterCliArguments(Environment.GetCommandLineArgs().Skip(1)).ToArray();
                 if (IsNotEmpty(commandLineArgs))
                 {
-                    if (ParseCertificateFile(commandLineArgs))
-                    {
-                        return true;
-                    }
+                    ParseCertificateFile(commandLineArgs);
+                    return true;
                 }
             }
             catch { }

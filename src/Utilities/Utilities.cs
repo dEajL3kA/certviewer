@@ -36,6 +36,7 @@ using System.Windows.Threading;
 
 using static Farmhash.Sharp.Farmhash;
 
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Utilities.Encoders;
 
@@ -84,7 +85,7 @@ namespace CertViewer.Utilities
             {
                 Assembly executingAssembly = Assembly.GetExecutingAssembly();
                 AssemblyInformationalVersionAttribute appVersion = GetInformationalVersion(executingAssembly);
-                AssemblyInformationalVersionAttribute bcVersion = GetInformationalVersion(Assembly.GetAssembly(typeof(Org.BouncyCastle.X509.X509Certificate)));
+                AssemblyInformationalVersionAttribute bcVersion = GetInformationalVersion(Assembly.GetAssembly(typeof(Asn1Encodable)));
                 return Tuple.Create(TryParseVersion(appVersion),
                     TryParseVersion(bcVersion),
                     TryParseBuildDate(executingAssembly.GetName().Version));
