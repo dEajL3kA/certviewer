@@ -18,23 +18,20 @@
 using System;
 using System.Collections.Generic;
 using System.Media;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
+using static CertViewer.Utilities.Utilities;
+
 namespace CertViewer.Dialogs
 {
-    /// <summary>
-    /// Interaktionslogik für DNViewer.xaml
-    /// </summary>
     public partial class DetailsView : Window
     {
         private bool m_initialized = false;
         private bool m_scrollbar = false;
-        private IList<KeyValuePair<TextBox, TextBox>> m_controls = new List<KeyValuePair<TextBox, TextBox>>();
+        private readonly IEnumerable<KeyValuePair<string, string>> m_items;
 
         // ==================================================================
         // Constructor
@@ -43,7 +40,7 @@ namespace CertViewer.Dialogs
         public DetailsView(IEnumerable<KeyValuePair<string, string>> items)
         {
             InitializeComponent();
-            if (IsNotNull(items))
+            if (IsNotNull(m_items = items))
             {
                 CreateElements(items);
             }
@@ -61,9 +58,12 @@ namespace CertViewer.Dialogs
                 m_initialized = true;
                 MinHeight = ActualHeight;
                 MinWidth = ActualWidth;
-                SizeToContent = m_scrollbar ? SizeToContent.Manual : SizeToContent.Height;
-                MaxWidth = double.PositiveInfinity;
+                MaxWidth = ActualWidth;
                 MaxHeight = m_scrollbar ? double.PositiveInfinity : ActualHeight;
+                if (m_scrollbar)
+                {
+                    SizeToContent = SizeToContent.Manual;
+                }
             }
         }
 
@@ -84,18 +84,21 @@ namespace CertViewer.Dialogs
 
         private void Button_CopyToCLipboard_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if (IsNotNull(m_items))
             {
-                StringBuilder sb = new StringBuilder();
-                string eol = Environment.NewLine;
-                foreach (KeyValuePair<TextBox, TextBox> element in m_controls)
+                try
                 {
-                    sb.Append(element.Key.Text).Append(": ").Append(element.Value.Text).Append(eol);
+                    StringBuilder sb = new StringBuilder();
+                    string endOfLine = Environment.NewLine;
+                    foreach (KeyValuePair<string, string> element in m_items)
+                    {
+                        sb.Append(element.Key).Append(": ").Append(element.Value).Append(endOfLine);
+                    }
+                    TryCopyToClipboard(sb.ToString());
+                    SystemSounds.Beep.Play();
                 }
-                TryCopyToClipboard(sb.ToString());
-                SystemSounds.Beep.Play();
+                catch { }
             }
-            catch { }
         }
 
         public bool? ShowDialog(IDisposable busy)
@@ -113,12 +116,11 @@ namespace CertViewer.Dialogs
             Style keyStyle = FindResource("KeyStyle") as Style;
             Style valStyle = FindResource("ValueStyle") as Style;
             Layout.Children.Clear();
-            m_controls.Clear();
             IEnumerator<KeyValuePair<string, string>> iter = items.GetEnumerator();
             while (iter.MoveNext())
             {
-                TextBox textKey = new TextBox() { Text = TruncateText(iter.Current.Key,   1024), Style = keyStyle };
-                TextBox textVal = new TextBox() { Text = TruncateText(iter.Current.Value, 4096), Style = valStyle };
+                TextBox textKey = new TextBox() { Text = TruncateText(WrapText(EscapeString(iter.Current.Key,   false)), 1024), Style = keyStyle };
+                TextBox textVal = new TextBox() { Text = TruncateText(WrapText(EscapeString(iter.Current.Value, false)), 8448), Style = valStyle };
                 if (Layout.Children.Count > 0)
                 {
                     Layout.RowDefinitions.Add(new RowDefinition() { MinHeight = 2 });
@@ -131,7 +133,6 @@ namespace CertViewer.Dialogs
                 Grid.SetColumn(textVal, 1);
                 Grid.SetRow(textKey, rowIndex);
                 Grid.SetRow(textVal, rowIndex);
-                m_controls.Add(new KeyValuePair<TextBox, TextBox>(textKey, textVal));
             }
         }
 
@@ -148,38 +149,25 @@ namespace CertViewer.Dialogs
             return string.Empty;
         }
 
-        private static void TryCopyToClipboard(string text)
+        public static string WrapText(string text, int lineLength = 64)
         {
-            if (IsNotEmpty(text))
+            if (IsNotEmpty(text) && (lineLength > 0))
             {
-                DoWithRetry(32, () => { Clipboard.SetText(text); return true; });
-            }
-        }
-
-        private static T DoWithRetry<T>(int maxTries, Func<T> operation)
-        {
-            for (int retry = 0; retry < maxTries; ++retry)
-            {
-                try
+                StringBuilder sb = new StringBuilder(text.Length + ((text.Length / lineLength) * Environment.NewLine.Length));
+                int offset = 0;
+                while (offset < text.Length)
                 {
-                    return operation();
+                    int length = Math.Min(text.Length - offset, lineLength);
+                    if (offset > 0)
+                    {
+                        sb.AppendLine();
+                    }
+                    sb.Append(text.Substring(offset, length));
+                    offset += length;
                 }
-                catch { }
-                Thread.Sleep(retry);
+                return sb.ToString();
             }
-            return operation();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNotEmpty(string text)
-        {
-            return !string.IsNullOrEmpty(text);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNotNull(object value)
-        {
-            return !ReferenceEquals(value, null);
+            return text;
         }
     }
 }

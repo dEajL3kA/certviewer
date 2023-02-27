@@ -24,71 +24,65 @@ using System.IO;
 using System.Linq;
 using System.Media;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using System.Text;
-using System.Threading;
+using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows;
 using System.Windows.Threading;
 
 using Microsoft.Win32;
 
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Utilities;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Asn1.X9;
-using Org.BouncyCastle.Asn1;
+using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.EC;
 using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Math.EC;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities.Collections;
-using Org.BouncyCastle.Utilities.Encoders;
 using Org.BouncyCastle.Utilities.IO.Pem;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
 
-using CertViewer.Dialogs;
+using CertViewer.Utilities;
 
-namespace CertViewer
+using static CertViewer.Utilities.NativeMethods;
+using static CertViewer.Utilities.Utilities;
+
+namespace CertViewer.Dialogs
 {
-    public enum DigestAlgo { MD5, RIPEMD160, SHA1, BLAKE2_160, BLAKE2_256, SHA224, SHA256, SHA3_224, SHA3_256 }
-
-    /// <summary>
-    /// Interaktionslogik für MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         private const int MAX_LENGTH = 128 * 1024 * 1024;
-        private const int WM_DRAWCLIPBOARD = 0x0308;
-        private const int WM_CHANGECBCHAIN = 0x030D;
+        private const int WM_CLIPBOARDUPDATE = 0x031D;
         private const string BASE_TITLE = "Certificate Viewer";
         private const string UNSPECIFIED = "(Unspecified)";
 
-        private static readonly Lazy<Tuple<Version, Version, DateTime>> PROGRAM_VERSION_INFORMATION = new Lazy<Tuple<Version, Version, DateTime>>(GetVersionAndBuildDate);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> EXT_KEY_USAGE = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_ExtKeyUsage);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> AUTH_INFO_ACCESS = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_AuthInfoAccess);
         private static readonly Lazy<IDictionary<ECCurve, string>> ECC_CURVE_NAMES = new Lazy<IDictionary<ECCurve, string>>(CreateLookup_EccCurveNames);
 
-        private static readonly Lazy<Regex> PEM_CERTIFICATE = new Lazy<Regex>(() => new Regex(@"-{3,}\s*BEGIN\s+CERTIFICATE\s*-{3,}([\t\n\v\f\r\x20-\x7E]+)-{3,}\s*END\s+CERTIFICATE\s*-{3,}", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
+        private static readonly Lazy<Regex> PEM_CERTIFICATE = new Lazy<Regex>(() => new Regex(@"-{3,}?\s*BEGIN\s+CERTIFICATE\s*-{3,}([\t\n\v\f\r\x20-\x7E]+?)-{3,}\s*END\s+CERTIFICATE\s*-{3,}?", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
         private static readonly Lazy<Regex> INVALID_BASE64_CHARS = new Lazy<Regex>(() => new Regex(@"[^A-Za-z0-9+/]+", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
-        private static readonly Lazy<Regex> CONTROL_CHARACTERS = new Lazy<Regex>(() => new Regex(@"[\u0000-\u001F\u007F]", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
 
         private bool m_initialized = false;
-        private IntPtr? m_hWndSelf = null, m_hWndNext = null;
+        private HashCode m_clipbrdHash = HashCode.Empty;
+        private ulong m_clipbrdTick = ulong.MaxValue;
+        private IntPtr m_hWndSelf = IntPtr.Zero;
 
         public X509Certificate Certificate { get; private set; } = null;
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
         public bool EnableMonitorClipboard { get; private set; } = true;
 
-        private readonly Flag m_ignoreDrawClipboard = new Flag { Value = false };
+        private readonly uint m_processId;
         private readonly IDictionary<TabItem, int> m_tabs;
-        private readonly ISet<TabItem> m_tabInitialized = new HashSet<TabItem>();
+        private readonly ISet<TabItem> m_tabInitialized;
+        private readonly DispatcherTimer m_clipbrdTimer;
 
         // ==================================================================
         // Constructor
@@ -96,8 +90,11 @@ namespace CertViewer
 
         public MainWindow()
         {
+            m_processId = GetCurrentProcessId();
+            m_tabInitialized = new HashSet<TabItem>();
             InitializeComponent();
             m_tabs = ItemsToDictionary<TabItem>(TabControl.Items);
+            m_clipbrdTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher);
             ShowPlaceholder(true);
             LoadConfigurationSettings();
         }
@@ -113,7 +110,9 @@ namespace CertViewer
             if (IsNotNull(source))
             {
                 source.AddHook(WndProc);
-                m_hWndNext = SetClipboardViewer((m_hWndSelf = source.Handle).Value);
+                AddClipboardFormatListener(m_hWndSelf = source.Handle);
+                m_clipbrdTimer.Tick += OnClipboardChanged;
+                m_clipbrdTimer.Interval = TimeSpan.FromMilliseconds(25);
             }
         }
 
@@ -138,9 +137,9 @@ namespace CertViewer
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
-            if (m_hWndSelf.HasValue && m_hWndNext.HasValue)
+            if (m_hWndSelf != IntPtr.Zero)
             {
-                ChangeClipboardChain(m_hWndSelf.Value, m_hWndNext.Value);
+                RemoveClipboardFormatListener(m_hWndSelf);
             }
         }
 
@@ -197,32 +196,28 @@ namespace CertViewer
         {
             switch (msg)
             {
-                case WM_DRAWCLIPBOARD:
-                    if (m_initialized && EnableMonitorClipboard && (!m_ignoreDrawClipboard.Value))
+                case WM_CLIPBOARDUPDATE:
+                    if (m_initialized && EnableMonitorClipboard)
                     {
-                        ParseCertificateFromClipboard();
-                    }
-                    if (m_hWndNext.HasValue)
-                    {
-                        SendMessage(m_hWndNext.Value, msg, wParam, lParam);
+                        Restart(m_clipbrdTimer);
                     }
                     handled = true;
                     break;
-                case WM_CHANGECBCHAIN:
-                    if (m_hWndNext.HasValue)
-                    {
-                        if (wParam == m_hWndNext.Value)
-                        {
-                            m_hWndNext = lParam;
-                        }
-                        else
-                        {
-                            SendMessage(m_hWndNext.Value, msg, wParam, lParam);
-                        }
-                    }
-                    break;
             }
             return IntPtr.Zero;
+        }
+
+        private void OnClipboardChanged(object sender, EventArgs e)
+        {
+            m_clipbrdTimer.Stop();
+            try
+            {
+                if (EnableMonitorClipboard && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
+                {
+                    ParseCertificateFromClipboard();
+                }
+            }
+            catch { }
         }
 
         private void Button_SubjectDN_Click(object sender, RoutedEventArgs e)
@@ -250,11 +245,8 @@ namespace CertViewer
             {
                 try
                 {
-                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
-                    {
-                        TryCopyToClipboard(cert.SerialNumber.ToString(16).ToUpperInvariant());
-                        SystemSounds.Beep.Play();
-                    }
+                    TryCopyToClipboard(ToHexString(cert.SerialNumber));
+                    SystemSounds.Beep.Play();
                 }
                 catch { }
             }
@@ -267,11 +259,8 @@ namespace CertViewer
                 try
                 {
                     int basicConstraints = cert.GetBasicConstraints();
-                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
-                    {
-                        TryCopyToClipboard((basicConstraints < 0) ? "End entity certificate (subject is not CA)" : $"CA certificate, max. path length: {DecodePathLenConstraint(basicConstraints)}");
-                        SystemSounds.Beep.Play();
-                    }
+                    TryCopyToClipboard((basicConstraints < 0) ? "End entity certificate (subject is not CA)" : $"CA certificate, max. path length: {DecodePathLenConstraint(basicConstraints)}");
+                    SystemSounds.Beep.Play();
                 }
                 catch { }
             }
@@ -282,16 +271,7 @@ namespace CertViewer
             X509Certificate cert;
             if (IsNotNull(cert = Certificate))
             {
-                try
-                {
-                    string publicKeyInfo = ParsePublicKey(cert.GetPublicKey());
-                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
-                    {
-                        TryCopyToClipboard(publicKeyInfo);
-                        SystemSounds.Beep.Play();
-                    }
-                }
-                catch { }
+                ShowPublicKeyDetails(cert.GetPublicKey(), cert.CertificateStructure.SubjectPublicKeyInfo);
             }
         }
 
@@ -327,15 +307,7 @@ namespace CertViewer
             X509Certificate cert;
             if (IsNotNull(cert = Certificate))
             {
-                try
-                {
-                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
-                    {
-                        TryCopyToClipboard(cert.SigAlgName);
-                        SystemSounds.Beep.Play();
-                    }
-                }
-                catch { }
+                ShowSignatureDetails(cert.SigAlgOid, cert.SigAlgName, cert.GetSignature(), cert.GetSigAlgParams());
             }
         }
 
@@ -358,11 +330,8 @@ namespace CertViewer
                     SubjectKeyIdentifier subjectKeyId = GetSubjectKeyIdentifier(cert);
                     if (IsNotNull(subjectKeyId))
                     {
-                        using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
-                        {
-                            TryCopyToClipboard(ParseSubjectKeyIdentifier(subjectKeyId));
-                            SystemSounds.Beep.Play();
-                        }
+                        TryCopyToClipboard(ParseSubjectKeyIdentifier(subjectKeyId));
+                        SystemSounds.Beep.Play();
                     }
                 }
                 catch { }
@@ -379,14 +348,20 @@ namespace CertViewer
                     AuthorityKeyIdentifier authorityKeyId = GetAuthorityKeyIdentifier(cert);
                     if (IsNotNull(authorityKeyId))
                     {
-                        using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
-                        {
-                            TryCopyToClipboard(ParseAuthorityKeyIdentifier(authorityKeyId));
-                            SystemSounds.Beep.Play();
-                        }
+                        TryCopyToClipboard(ParseAuthorityKeyIdentifier(authorityKeyId));
+                        SystemSounds.Beep.Play();
                     }
                 }
                 catch { }
+            }
+        }
+
+        private void Button_CrlDistPoint_Click(object sender, RoutedEventArgs e)
+        {
+            X509Certificate cert;
+            if (IsNotNull(cert = Certificate))
+            {
+                ShowCrlDistPointDetails(GetCrlDistributionPoints(cert));
             }
         }
 
@@ -399,21 +374,12 @@ namespace CertViewer
             }
         }
 
-        private void Button_OcspServer_Click(object sender, RoutedEventArgs e)
+        private void Button_CertPolicies_Click(object sender, RoutedEventArgs e)
         {
             X509Certificate cert;
             if (IsNotNull(cert = Certificate))
             {
-                ShowAuthorityInformationDetails(GetAuthorityInformationAccess(cert));
-            }
-        }
-
-        private void Button_CrlDistPoint_Click(object sender, RoutedEventArgs e)
-        {
-            X509Certificate cert;
-            if (IsNotNull(cert = Certificate))
-            {
-                ShowCrlDistPointDetails(GetCrlDistributionPoints(cert));
+                ShowCertPolicyDetails(GetCertificatePolicies(cert));
             }
         }
 
@@ -467,12 +433,9 @@ namespace CertViewer
             {
                 try
                 {
-                    string digestHex = Hex.ToHexString(CalculateDigest(cert)).ToUpperInvariant();
-                    using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
-                    {
-                        TryCopyToClipboard($"{Enum.GetName(typeof(DigestAlgo), DigestAlgorithm)}={digestHex}");
-                        SystemSounds.Beep.Play();
-                    }
+                    string digestHex = ToHexString(CalculateDigest(cert));
+                    TryCopyToClipboard($"{Enum.GetName(typeof(DigestAlgo), DigestAlgorithm)}={digestHex}");
+                    SystemSounds.Beep.Play();
                 }
                 catch { }
             }
@@ -498,26 +461,33 @@ namespace CertViewer
 
         private void Clear_Clicked(object sender, RoutedEventArgs e)
         {
+            m_clipbrdHash = HashCode.Empty;
             Certificate = null;
             TextBox_Asn1Data.Text = TextBox_BasicConstraints.Text = TextBox_Fingerprint.Text = 
                 TextBox_ExtKeyUsage.Text = TextBox_Issuer.Text = TextBox_KeyUsage.Text = TextBox_NotAfter.Text =
                 TextBox_NotBefore.Text = TextBox_PemData.Text = TextBox_PublicKey.Text = TextBox_Serial.Text =
                 TextBox_SignAlgo.Text = TextBox_SubjAltNames.Text = TextBox_Subject.Text =
                 TextBox_AuthorityKeyId.Text = TextBox_SubjectKeyId.Text = TextBox_CrlDistPoint.Text =
-                TextBox_OcspServer.Text = TextBox_AuthorityInformation.Text = string.Empty;
-            Image_NotBefore_Valid.Visibility = Image_NotBefore_Expired.Visibility = Image_NotAfter_Valid.Visibility = Image_NotAfter_Expired.Visibility = Visibility.Hidden;
+                TextBox_CertPolicies.Text = TextBox_AuthorityInformation.Text = string.Empty;
+            Image_NotBefore_Valid.Visibility = Image_NotBefore_Expired.Visibility =
+                Image_NotAfter_Valid.Visibility = Image_NotAfter_Expired.Visibility = Visibility.Hidden;
             ShowPlaceholder(true);
             Tab_Extensions.IsEnabled = Tab_Asn1Data.IsEnabled = Tab_PemData.IsEnabled = false;
             TabControl.SelectedItem = Tab_CertInfo;
         }
 
-        private void Label_Placeholder_MouseDown(object sender, MouseButtonEventArgs e)
+        private void Label_ErrorText_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            FrameworkElement element = sender as FrameworkElement;
-            if (IsNotNull(element) && (element.Visibility == Visibility.Visible))
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine(Label_ErrorText.Content as string);
+            sb.AppendLine(Label_ErrorText.ToolTip as string);
+            try
             {
-                element.Visibility = Visibility.Hidden;
+                TryCopyToClipboard(sb.ToString());
+                SystemSounds.Beep.Play();
             }
+            catch { }
+            HideErrorText();
         }
 
         private void Image_Placeholder_MouseDown(object sender, MouseButtonEventArgs e)
@@ -537,11 +507,12 @@ namespace CertViewer
         {
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
-                using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                try
                 {
                     TryCopyToClipboard(TextBox_Asn1Data.Text);
                     SystemSounds.Beep.Play();
                 }
+                catch { }
             }
         }
 
@@ -549,11 +520,12 @@ namespace CertViewer
         {
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
-                using (SetAndRestore disabler = new SetAndRestore(m_ignoreDrawClipboard, Dispatcher))
+                try
                 {
                     TryCopyToClipboard(TextBox_PemData.Text);
                     SystemSounds.Beep.Play();
                 }
+                catch { }
             }
         }
 
@@ -561,20 +533,8 @@ namespace CertViewer
         {
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
-                Tuple<Version, Version, DateTime> version = PROGRAM_VERSION_INFORMATION.Value;
-                StringBuilder sb = new StringBuilder();
-                sb.AppendLine($"CertViewer v{version.Item1}, built on {version.Item3.ToString("yyyy-MM-dd")}");
-                sb.AppendLine("Copyright (c) 2023 \"dEajL3kA\" <Cumpoing79@web.de>");
-                sb.AppendLine("Released under the MIT license");
-                sb.AppendLine("Website: https://github.com/dEajL3kA/certviewer");
-                sb.AppendLine();
-                sb.AppendLine($"Bouncy Castle Cryptography Library v{version.Item2}");
-                sb.AppendLine("Copyright (c) 2000-2023 The Legion of the Bouncy Castle");
-                sb.AppendLine("Released under the MIT license");
-                sb.AppendLine("Website: https://github.com/bcgit/bc-csharp");
-                sb.AppendLine();
-                sb.AppendLine("No system of mass surveillance has existed in any society that we know of to this point that has not been abused!");
-                MessageBox.Show(sb.ToString(), "About...", MessageBoxButton.OK, MessageBoxImage.Information);
+                AboutDialog aboutDialog = new AboutDialog() { Owner = this };
+                aboutDialog.ShowDialog();
             }
         }
 
@@ -656,15 +616,22 @@ namespace CertViewer
                     string text;
                     if (IsNotEmpty(text = TryPasteFromClipboard()))
                     {
-                        Match match = PEM_CERTIFICATE.Value.Match(text);
-                        while (match.Success)
+                        HashCode currentHash = HashCode.Compute(text.Trim());
+                        ulong ticks = GetTickCount64();
+                        if ((!m_clipbrdHash.Equals(currentHash)) || (ticks < m_clipbrdTick) || ((ticks - m_clipbrdTick) >= 15000))
                         {
-                            Title = $"Clipboard \u2013 {BASE_TITLE}";
-                            if (ParseCertificateData(match.Groups[1].Value))
+                            m_clipbrdHash = currentHash;
+                            m_clipbrdTick = ticks;
+                            Match match = PEM_CERTIFICATE.Value.Match(text);
+                            while (match.Success)
                             {
-                                return true;
+                                Title = $"Clipboard \u2013 {BASE_TITLE}";
+                                if (ParseCertificateData(match.Groups[1].Value))
+                                {
+                                    return true;
+                                }
+                                match = match.NextMatch();
                             }
-                            match = match.NextMatch();
                         }
                     }
                 }
@@ -672,7 +639,7 @@ namespace CertViewer
                 {
                     TabControl.SelectedItem = Tab_CertInfo;
                     Certificate = null;
-                    ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
+                    ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
                 }
             }
             return false;
@@ -693,6 +660,7 @@ namespace CertViewer
                             if (IsNotEmpty(data))
                             {
                                 Title = $"{GetBaseName(fileName)} \u2013 {BASE_TITLE}";
+                                m_clipbrdHash = HashCode.Empty;
                                 Match match = PEM_CERTIFICATE.Value.Match(Encoding.UTF8.GetString(data));
                                 while (match.Success)
                                 {
@@ -710,7 +678,7 @@ namespace CertViewer
                     {
                         TabControl.SelectedItem = Tab_CertInfo;
                         Certificate = null;
-                        ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
+                        ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
                     }
                 }
             }
@@ -734,7 +702,7 @@ namespace CertViewer
             {
                 TabControl.SelectedItem = Tab_CertInfo;
                 Certificate = null;
-                ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
+                ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
             }
             return false;
         }
@@ -748,13 +716,13 @@ namespace CertViewer
                 m_tabInitialized.Clear();
                 if (success = IsNotNull(Certificate = cert))
                 {
-                    string subjectDN = X500NameToRFC2253(cert.SubjectDN);
+                    string subjectDN = EscapeString(X500NameToRFC2253(cert.SubjectDN), false);
                     SetText(TextBox_Subject, DefaultString(subjectDN, UNSPECIFIED));
                     Button_SubjectDN.IsEnabled = IsNotEmpty(subjectDN);
-                    string issuerDN = X500NameToRFC2253(cert.IssuerDN);
+                    string issuerDN = EscapeString(X500NameToRFC2253(cert.IssuerDN), false);
                     SetText(TextBox_Issuer, DefaultString(issuerDN, UNSPECIFIED));
                     Button_IssuerDN.IsEnabled = IsNotEmpty(issuerDN);
-                    SetText(TextBox_Serial, $"0x{cert.SerialNumber.ToString(16).ToUpperInvariant()}");
+                    SetText(TextBox_Serial, $"0x{ToHexString(cert.SerialNumber)}");
                     DateTime notBeforeUtc = cert.NotBefore.ToUniversalTime();
                     DateTime notAfterUtc = cert.NotAfter.ToUniversalTime();
                     SetText(TextBox_NotBefore, notBeforeUtc.ToString("yyyy-MM-dd HH\\:mm\\:ss", CultureInfo.InvariantCulture));
@@ -765,9 +733,13 @@ namespace CertViewer
                     string subjectAlternativeNames = ParseSubjectAlternativeNames(cert.GetSubjectAlternativeNames());
                     SetText(TextBox_SubjAltNames, DefaultString(subjectAlternativeNames, UNSPECIFIED));
                     Button_SubjAltNames.IsEnabled = IsNotEmpty(subjectAlternativeNames);
-                    SetText(TextBox_PublicKey, ParsePublicKey(cert.GetPublicKey()));
-                    SetText(TextBox_SignAlgo, cert.SigAlgName);
-                    SetText(TextBox_Fingerprint, Hex.ToHexString(CalculateDigest(cert)).ToUpperInvariant());
+                    string publicKeyInfo = ParsePublicKey(cert.GetPublicKey());
+                    SetText(TextBox_PublicKey, DefaultString(publicKeyInfo, UNSPECIFIED));
+                    Button_PublicKey.IsEnabled = IsNotEmpty(publicKeyInfo);
+                    string signatureInfo = ParseSignatureInfo(cert.SigAlgName, cert.CertificateStructure.Signature);
+                    SetText(TextBox_SignAlgo, DefaultString(signatureInfo, UNSPECIFIED));
+                    Button_SignAlgo.IsEnabled = IsNotEmpty(signatureInfo);
+                    SetText(TextBox_Fingerprint, ToHexString(CalculateDigest(cert)));
                     m_tabInitialized.Add(Tab_CertInfo);
                     TabControl.SelectedItem = Tab_CertInfo;
                     ShowPlaceholder(false);
@@ -784,7 +756,7 @@ namespace CertViewer
             {
                 TabControl.SelectedItem = Tab_CertInfo;
                 Certificate = null;
-                ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}");
+                ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
             }
             return success;
         }
@@ -816,11 +788,12 @@ namespace CertViewer
                             string crlDistributionPoints = ParseCrlDistributionPoints(GetCrlDistributionPoints(cert));
                             SetText(TextBox_CrlDistPoint, DefaultString(crlDistributionPoints, UNSPECIFIED));
                             Button_CrlDistPoint.IsEnabled = IsNotEmpty(crlDistributionPoints);
-                            Tuple<string, string> authorityInformationAccess = ParseAuthorityInformationAccess(GetAuthorityInformationAccess(cert));
-                            SetText(TextBox_AuthorityInformation, DefaultString(authorityInformationAccess.Item1, UNSPECIFIED));
-                            Button_AuthorityInformation.IsEnabled = IsNotEmpty(authorityInformationAccess.Item1);
-                            SetText(TextBox_OcspServer, DefaultString(authorityInformationAccess.Item2, UNSPECIFIED));
-                            Button_OcspServer.IsEnabled = IsNotEmpty(authorityInformationAccess.Item2);
+                            string authorityInformationAccess = ParseAuthorityInformationAccess(GetAuthorityInformationAccess(cert));
+                            SetText(TextBox_AuthorityInformation, DefaultString(authorityInformationAccess, UNSPECIFIED));
+                            Button_AuthorityInformation.IsEnabled = IsNotEmpty(authorityInformationAccess);
+                            string certificatePolicies = ParseCertificatePolicies(GetCertificatePolicies(cert));
+                            SetText(TextBox_CertPolicies, DefaultString(certificatePolicies, UNSPECIFIED));
+                            Button_CertPolicies.IsEnabled = IsNotEmpty(certificatePolicies);
                             break;
                         case 2:
                             SetText(TextBox_Asn1Data, CreateAsn1Dump(cert), false);
@@ -846,13 +819,103 @@ namespace CertViewer
                     {
                         IDictionary<DerObjectIdentifier, string> oidSymbols = X509_NAME_ATTRIBUTES.Value;
                         IEnumerable<KeyValuePair<string, string>> items = oidList.Select(oid => GetValueOrDefault(oidSymbols, oid, oid.Id))
-                                .Zip(valList, (key, value) => new KeyValuePair<string, string>(key, EscapeString(value, false)));
+                                .Zip(valList, (key, value) => new KeyValuePair<string, string>(key, value));
                         if (items.Any())
                         {
                             DetailsView viewer = new DetailsView(items.Reverse()) { Owner = this, Title = title };
                             viewer.ShowDialog(busy);
                         }
                     }
+                }
+            }
+        }
+
+        private void ShowPublicKeyDetails(AsymmetricKeyParameter asymmetricKeyParameter, SubjectPublicKeyInfo subjectPublicKeyInfo)
+        {
+            if (IsNotNull(asymmetricKeyParameter) && IsNotNull(subjectPublicKeyInfo))
+            {
+                using (OverrideCursor busy = new OverrideCursor())
+                {
+                    List<KeyValuePair<string, string>> items = new List<KeyValuePair<string, string>>(8);
+                    try
+                    {
+                        items.Add(new KeyValuePair<string, string>("oid", subjectPublicKeyInfo.AlgorithmID.Algorithm.Id));
+                        const string ALGORITHM_NAME = "algorithm";
+                        if (asymmetricKeyParameter is ElGamalKeyParameters egKey)
+                        {
+                            items.Add(new KeyValuePair<string, string>(ALGORITHM_NAME, "ElGamal encryption"));
+                            ElGamalParameters param = egKey.Parameters;
+                            items.Add(new KeyValuePair<string, string>("G", ToHexString(param.G)));
+                            items.Add(new KeyValuePair<string, string>("P", ToHexString(param.P)));
+                            items.Add(new KeyValuePair<string, string>("L", $"{param.L:X}"));
+                        }
+                        else if (asymmetricKeyParameter is DsaPublicKeyParameters dsaKey)
+                        {
+                            items.Add(new KeyValuePair<string, string>(ALGORITHM_NAME, "DSA (Digital Signature Algorithm)"));
+                            DsaParameters param = dsaKey.Parameters;
+                            items.Add(new KeyValuePair<string, string>("G", ToHexString(param.G)));
+                            items.Add(new KeyValuePair<string, string>("P", ToHexString(param.P)));
+                            items.Add(new KeyValuePair<string, string>("Q", ToHexString(param.Q)));
+                        }
+                        else if (asymmetricKeyParameter is RsaKeyParameters rsaKey)
+                        {
+                            items.Add(new KeyValuePair<string, string>(ALGORITHM_NAME, "RSA (Rivest–Shamir–Adleman)"));
+                            items.Add(new KeyValuePair<string, string>("exponent", ToHexString(rsaKey.Exponent)));
+                            items.Add(new KeyValuePair<string, string>("modulus", ToHexString(rsaKey.Modulus)));
+                        }
+                        else if (asymmetricKeyParameter is ECPublicKeyParameters eccKey)
+                        {
+                            items.Add(new KeyValuePair<string, string>(ALGORITHM_NAME, "ECC (Elliptic-Curve Cryptography)"));
+                            string curve = GetValueOrDefault(ECC_CURVE_NAMES.Value, eccKey.Parameters.Curve, string.Empty);
+                            items.Add(new KeyValuePair<string, string>("curve", IsNotEmpty(curve) ? $"{curve} ({eccKey.PublicKeyParamSet.Id})" : eccKey.PublicKeyParamSet.Id));
+                            items.Add(new KeyValuePair<string, string>("Q.x", ToHexString(eccKey.Q.AffineXCoord.ToBigInteger())));
+                            items.Add(new KeyValuePair<string, string>("Q.y", ToHexString(eccKey.Q.AffineYCoord.ToBigInteger())));
+                            ECDomainParameters param = eccKey.Parameters;
+                            items.Add(new KeyValuePair<string, string>("p", ToHexString(param.Curve.Field.Characteristic)));
+                            items.Add(new KeyValuePair<string, string>("a", ToHexString(param.Curve.A.ToBigInteger())));
+                            items.Add(new KeyValuePair<string, string>("b", ToHexString(param.Curve.B.ToBigInteger())));
+                            items.Add(new KeyValuePair<string, string>("G.x", ToHexString(param.G.AffineXCoord.ToBigInteger())));
+                            items.Add(new KeyValuePair<string, string>("G.y", ToHexString(param.G.AffineYCoord.ToBigInteger())));
+                            items.Add(new KeyValuePair<string, string>("n", ToHexString(param.N)));
+                            items.Add(new KeyValuePair<string, string>("h", ToHexString(param.H)));
+                        }
+                        else
+                        {
+                            items.Add(new KeyValuePair<string, string>("value", ToHexString(subjectPublicKeyInfo.GetEncoded())));
+                        }
+                        Asn1Encodable parameters;
+                        if ((items.Count < 8) && IsNotNull(parameters = subjectPublicKeyInfo.AlgorithmID.Parameters))
+                        {
+                            items.Add(new KeyValuePair<string, string>("parameter", ToHexString(parameters.GetEncoded())));
+                        }
+                    }
+                    catch { }
+                    DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Public Key" };
+                    viewer.ShowDialog(busy);
+                }
+            }
+        }
+
+        private void ShowSignatureDetails(string sigAlgOid, string sigAlgName, byte[] signature, byte[] sigParameters)
+        {
+            if (IsNotEmpty(sigAlgOid) && IsNotEmpty(sigAlgName) && IsNotEmpty(signature))
+            {
+                using (OverrideCursor busy = new OverrideCursor())
+                {
+                    List<KeyValuePair<string, string>> items = new List<KeyValuePair<string, string>>(8);
+                    try
+                    {
+                        items.Add(new KeyValuePair<string, string>("oid", sigAlgOid));
+                        items.Add(new KeyValuePair<string, string>("algorithm", sigAlgName));
+                        items.Add(new KeyValuePair<string, string>("value", ToHexString(signature)));
+                        if (IsNotEmpty(sigParameters))
+                        {
+                            items.Add(new KeyValuePair<string, string>("parameter", ToHexString(sigParameters)));
+                        }
+                    }
+                    catch { }
+                    DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Signature" };
+                    viewer.ShowDialog(busy);
                 }
             }
         }
@@ -900,7 +963,7 @@ namespace CertViewer
                 using (OverrideCursor busy = new OverrideCursor())
                 {
                     IEnumerable<KeyValuePair<string, string>> items = subjectAlternativeNames.Where(item => item.Count >= 2)
-                        .Select(item => new KeyValuePair<string, string>(DecodeGeneralNameType(item[0] as int?), EscapeString(item[1] as string, false)))
+                        .Select(item => new KeyValuePair<string, string>(DecodeGeneralNameType(item[0] as int?), item[1] as string))
                         .Where(item => IsNotEmpty(item.Key) && IsNotEmpty(item.Value));
                     if (items.Any())
                     {
@@ -910,7 +973,7 @@ namespace CertViewer
                 }
             }
         }
-        
+
         private void ShowAuthorityInformationDetails(AuthorityInformationAccess authorityInformationAccess)
         {
             if (IsNotNull(authorityInformationAccess))
@@ -923,10 +986,27 @@ namespace CertViewer
                         .Where(descr => IsNotEmpty(descr.Item1) && IsNotNull(descr.Item2))
                         .Select(descr => Tuple.Create(descr.Item1, DecodeGeneralNameType(descr.Item2.TagNo), DecodeGeneralNameValue(descr.Item2.Name)))
                         .Where(descr => IsNotEmpty(descr.Item2) && IsNotNull(descr.Item3))
-                        .Select(descr => new KeyValuePair<string, string>($"{descr.Item1}.{descr.Item2}", EscapeString(descr.Item3, false)));
+                        .Select(descr => new KeyValuePair<string, string>($"{descr.Item1}.{descr.Item2}", descr.Item3));
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Authority Information Access" };
+                        viewer.ShowDialog(busy);
+                    }
+                }
+            }
+        }
+        private void ShowCertPolicyDetails(CertificatePolicies certificatePolicies)
+        {
+            if (IsNotNull(certificatePolicies))
+            {
+                using (OverrideCursor busy = new OverrideCursor())
+                {
+                    IEnumerable<KeyValuePair<string, string>> items = certificatePolicies.GetPolicyInformation()
+                        .SelectMany((info, index) => DecodePolicyInformation(info).Select(item => Tuple.Create(index, item.Item1, item.Item2)))
+                        .Select(item => new KeyValuePair<string, string>($"policy[{item.Item1}].{item.Item2}", item.Item3));
+                    if (items.Any())
+                    {
+                        DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Certificate Policies" };
                         viewer.ShowDialog(busy);
                     }
                 }
@@ -945,7 +1025,7 @@ namespace CertViewer
                         .Select(point => point.Name)
                         .OfType<GeneralNames>()
                         .SelectMany((names, index) => names.GetNames().Select(name => Tuple.Create(index, name.TagNo, name.Name)))
-                        .Select(name => Tuple.Create(name.Item1, DecodeGeneralNameType(name.Item2), EscapeString(DecodeGeneralNameValue(name.Item3), false)))
+                        .Select(name => Tuple.Create(name.Item1, DecodeGeneralNameType(name.Item2), DecodeGeneralNameValue(name.Item3)))
                         .Where(name => IsNotEmpty(name.Item2) && IsNotEmpty(name.Item3))
                         .Select(name => new KeyValuePair<string, string>($"distPoint[{name.Item1}].{name.Item2}", name.Item3));
                     if (items.Any())
@@ -965,24 +1045,15 @@ namespace CertViewer
                 {
                     switch (DigestAlgorithm)
                     {
-                        case DigestAlgo.MD5:
-                            return DigestUtilities.CalculateDigest("MD5", cert.GetEncoded());
-                        case DigestAlgo.RIPEMD160:
-                            return DigestUtilities.CalculateDigest("RIPEMD-160", cert.GetEncoded());
-                        case DigestAlgo.SHA1:
-                            return DigestUtilities.CalculateDigest("SHA-1", cert.GetEncoded());
-                        case DigestAlgo.SHA224:
-                            return DigestUtilities.CalculateDigest("SHA-224", cert.GetEncoded());
-                        case DigestAlgo.SHA256:
-                            return DigestUtilities.CalculateDigest("SHA-256", cert.GetEncoded());
-                        case DigestAlgo.SHA3_224:
-                            return DigestUtilities.CalculateDigest("SHA3-224", cert.GetEncoded());
-                        case DigestAlgo.SHA3_256:
-                            return DigestUtilities.CalculateDigest("SHA3-256", cert.GetEncoded());
-                        case DigestAlgo.BLAKE2_160:
-                            return DigestUtilities.CalculateDigest("BLAKE2B-160", cert.GetEncoded());
-                        case DigestAlgo.BLAKE2_256:
-                            return DigestUtilities.CalculateDigest("BLAKE2B-256", cert.GetEncoded());
+                        case DigestAlgo.MD5:        return DigestUtilities.CalculateDigest("MD5",         cert.GetEncoded());
+                        case DigestAlgo.RIPEMD160:  return DigestUtilities.CalculateDigest("RIPEMD-160",  cert.GetEncoded());
+                        case DigestAlgo.SHA1:       return DigestUtilities.CalculateDigest("SHA-1",       cert.GetEncoded());
+                        case DigestAlgo.SHA224:     return DigestUtilities.CalculateDigest("SHA-224",     cert.GetEncoded());
+                        case DigestAlgo.SHA256:     return DigestUtilities.CalculateDigest("SHA-256",     cert.GetEncoded());
+                        case DigestAlgo.SHA3_224:   return DigestUtilities.CalculateDigest("SHA3-224",    cert.GetEncoded());
+                        case DigestAlgo.SHA3_256:   return DigestUtilities.CalculateDigest("SHA3-256",    cert.GetEncoded());
+                        case DigestAlgo.BLAKE2_160: return DigestUtilities.CalculateDigest("BLAKE2B-160", cert.GetEncoded());
+                        case DigestAlgo.BLAKE2_256: return DigestUtilities.CalculateDigest("BLAKE2B-256", cert.GetEncoded());
                     }
                 }
                 catch { }
@@ -995,17 +1066,18 @@ namespace CertViewer
             X509Certificate cert;
             if (IsNotNull(cert = Certificate))
             {
-                SetText(TextBox_Fingerprint, Hex.ToHexString(CalculateDigest(cert)).ToUpperInvariant());
+                SetText(TextBox_Fingerprint, ToHexString(CalculateDigest(cert)));
             }
         }
 
-        private void ShowPlaceholder(bool show, string placeholderText = null)
+        private void ShowPlaceholder(bool show, string placeholderText = null, string details = null)
         {
             Tab_Extensions.IsEnabled = Tab_PemData.IsEnabled = Tab_Asn1Data.IsEnabled = show ? false : true;
             Panel_Placeholder.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
             Panel_CertInfo.Visibility = show ? Visibility.Hidden : Visibility.Visible;
-            Label_Placeholder.Visibility = IsNotEmpty(placeholderText) ? Visibility.Visible : Visibility.Hidden;
-            Label_Placeholder.Content = IsNotEmpty(placeholderText) ? placeholderText : string.Empty;
+            Label_ErrorText.Visibility = IsNotEmpty(placeholderText) ? Visibility.Visible : Visibility.Hidden;
+            Label_ErrorText.Content = DefaultString(placeholderText);
+            Label_ErrorText.ToolTip = IsNotEmpty(details) ? details : null;
             Keyboard.ClearFocus();
             FocusManager.SetFocusedElement(this, null);
         }
@@ -1018,9 +1090,10 @@ namespace CertViewer
 
         private void HideErrorText()
         {
-            if (Label_Placeholder.Visibility == Visibility.Visible)
+            if (Label_ErrorText.Visibility == Visibility.Visible)
             {
-                Label_Placeholder.Visibility = Visibility.Hidden;
+                Label_ErrorText.Content = string.Empty;
+                Label_ErrorText.Visibility = Visibility.Hidden;
             }
         }
 
@@ -1208,33 +1281,56 @@ namespace CertViewer
 
         private static string ParsePublicKey(AsymmetricKeyParameter asymmetricKeyParameter)
         {
-            try
+            if (IsNotNull(asymmetricKeyParameter))
             {
-                if (asymmetricKeyParameter is RsaKeyParameters)
+                try
                 {
-                    RsaKeyParameters rsaKey = (RsaKeyParameters) asymmetricKeyParameter;
-                    return $"RSA, key size: {rsaKey.Modulus.BitLength}, public exponent: 0x{rsaKey.Exponent:X}";
+                    if (asymmetricKeyParameter is ElGamalKeyParameters egKey)
+                    {
+                        ElGamalParameters param = egKey.Parameters;
+                        return $"ElGamal, key size: {((param.L != 0) ? param.L : param.P.BitLength)} bits";
+                    }
+                    else if (asymmetricKeyParameter is DsaPublicKeyParameters dsaKey)
+                    {
+                        return $"DSA, key size: {dsaKey.Parameters.P.BitLength} bits";
+                    }
+                    else if (asymmetricKeyParameter is RsaKeyParameters rsaKey)
+                    {
+                        return $"RSA, key size: {rsaKey.Modulus.BitLength} bits, public exponent: 0x{ToHexString(rsaKey.Exponent)}";
+                    }
+                    else if (asymmetricKeyParameter is ECPublicKeyParameters eccKey)
+                    {
+                        string curveName = GetValueOrDefault(ECC_CURVE_NAMES.Value, eccKey.Parameters.Curve, "unknown");
+                        return $"ECC, key size: {eccKey.Parameters.N.BitLength} bits, curve: {curveName}";
+                    }
+                    else
+                    {
+                        return $"Other ({asymmetricKeyParameter.GetType().Name})";
+                    }
                 }
-                else if (asymmetricKeyParameter is ECKeyParameters)
-                {
-                    ECKeyParameters ecKey = (ECKeyParameters)asymmetricKeyParameter;
-                    string curveName = GetValueOrDefault(ECC_CURVE_NAMES.Value, ecKey.Parameters.Curve, "Unknown");
-                    return $"ECC, key size: {ecKey.Parameters.N.BitLength}, curve: {curveName}";
-                }
-                else
-                {
-                    return asymmetricKeyParameter.GetType().Name;
-                }
+                catch { }
             }
-            catch { }
             return string.Empty;
+        }
+
+        private string ParseSignatureInfo(string sigAlgName, DerBitString signature)
+        {
+            if (IsNotEmpty(sigAlgName) && IsNotNull(signature))
+            {
+                try
+                {
+                    return $"{sigAlgName}, length: {(signature.GetBitStream().Length * 8) - signature.PadBits} bits";
+                }
+                catch { }
+            }
+            return sigAlgName;
         }
 
         private static string ParseSubjectKeyIdentifier(SubjectKeyIdentifier subjectKeyId)
         {
             if (IsNotNull(subjectKeyId))
             {
-                return Hex.ToHexString(subjectKeyId.GetKeyIdentifier()).ToUpperInvariant();
+                return ToHexString(subjectKeyId.GetKeyIdentifier());
             }
             return string.Empty;
         }
@@ -1243,7 +1339,7 @@ namespace CertViewer
         {
             if (IsNotNull(authorityKeyId))
             {
-                return Hex.ToHexString(authorityKeyId.GetKeyIdentifier()).ToUpperInvariant();
+                return ToHexString(authorityKeyId.GetKeyIdentifier());
             }
             return string.Empty;
         }
@@ -1273,13 +1369,13 @@ namespace CertViewer
             return string.Empty;
         }
 
-        private static Tuple<string, string> ParseAuthorityInformationAccess(AuthorityInformationAccess authorityInformationAccess)
+        private static string ParseAuthorityInformationAccess(AuthorityInformationAccess authorityInformationAccess)
         {
             if (IsNotNull(authorityInformationAccess))
             {
                 try
                 {
-                    StringBuilder sbCaIssuer = new StringBuilder(), sbOcsp = new StringBuilder();
+                    StringBuilder sb = new StringBuilder();
                     GeneralName location;
                     DerObjectIdentifier method;
                     foreach (AccessDescription descr in authorityInformationAccess.GetAccessDescriptions())
@@ -1289,23 +1385,45 @@ namespace CertViewer
                             method = descr.AccessMethod;
                             if (X509ObjectIdentifiers.IdADCAIssuers.Equals(method))
                             {
-                                Append(sbCaIssuer, EscapeString(DecodeGeneralNameValue(location.Name)));
+                                Append(sb, EscapeString(DecodeGeneralNameValue(location.Name)));
                             }
                             else if (X509ObjectIdentifiers.IdADOcsp.Equals(method))
                             {
-                                Append(sbOcsp, EscapeString(DecodeGeneralNameValue(location.Name)));
+                                Append(sb, EscapeString(DecodeGeneralNameValue(location.Name)));
                             }
                         }
                     }
-                    if ((sbCaIssuer.Length > 0) || (sbOcsp.Length > 0))
+                    if (sb.Length > 0)
                     {
-                        return Tuple.Create(sbCaIssuer.ToString(), sbOcsp.ToString());
+                        return sb.ToString();
                     }
                 }
                 catch { }
 
             }
-            return Tuple.Create(string.Empty, string.Empty);
+            return string.Empty;
+        }
+
+        private static string ParseCertificatePolicies(CertificatePolicies certificatePolicies)
+        {
+            if (IsNotNull(certificatePolicies))
+            {
+                try
+                {
+                    StringBuilder sb = new StringBuilder();
+                    foreach (PolicyInformation policyInfo in certificatePolicies.GetPolicyInformation())
+                    {
+                        Append(sb, policyInfo.PolicyIdentifier.Id);
+                    }
+                    if (sb.Length > 0)
+                    {
+                        return sb.ToString();
+                    }
+                }
+                catch { }
+
+            }
+            return string.Empty;
         }
 
         private static string DecodeGeneralNameType(int? type)
@@ -1347,21 +1465,21 @@ namespace CertViewer
 
         private static string DecodeGeneralNameValue(Asn1Encodable value)
         {
-            if (value is DerStringBase)
+            if (value is DerStringBase str)
             {
-                return ((DerStringBase)value).GetString();
+                return str.GetString();
             }
-            else if (value is DerObjectIdentifier)
+            else if (value is DerObjectIdentifier id)
             {
-                return ((DerObjectIdentifier)value).Id;
+                return id.Id;
             }
-            else if (value is DerOctetString)
+            else if (value is DerOctetString bytes)
             {
-                return Hex.ToHexString(((DerOctetString)value).GetOctets()).ToUpperInvariant();
+                return ToHexString(bytes.GetOctets());
             }
-            else if (value is GeneralName)
+            else if (value is GeneralName name)
             {
-                return DecodeGeneralNameValue(((GeneralName)value).Name);
+                return DecodeGeneralNameValue(name.Name);
             }
             else if (IsNotNull(value))
             {
@@ -1370,6 +1488,25 @@ namespace CertViewer
             else
             {
                 return string.Empty;
+            }
+        }
+
+        private static IEnumerable<Tuple<string, string>> DecodePolicyInformation(PolicyInformation policyInformation)
+        {
+            if (IsNotNull(policyInformation))
+            {
+                yield return Tuple.Create("oid", policyInformation.PolicyIdentifier.Id);
+                Asn1Sequence qualifiers;
+                if (IsNotNull(qualifiers = policyInformation.PolicyQualifiers))
+                {
+                    foreach (Asn1Sequence qualifier in qualifiers.OfType<Asn1Sequence>().Where(sequence => sequence.Count >= 2))
+                    {
+                        if ((qualifier[0] is DerObjectIdentifier id) && PolicyQualifierID.IdQtCps.Equals(id) && (qualifier[1] is DerStringBase value))
+                        {
+                            yield return Tuple.Create("cps", value.GetString());
+                        }
+                    }
+                }
             }
         }
 
@@ -1441,6 +1578,23 @@ namespace CertViewer
             return null;
         }
 
+        private static CertificatePolicies GetCertificatePolicies(X509Certificate cert)
+        {
+            if (IsNotNull(cert))
+            {
+                try
+                {
+                    Asn1Object data;
+                    if (IsNotNull(data = X509ExtensionUtilities.FromExtensionValue(cert, X509Extensions.CertificatePolicies)))
+                    {
+                        return CertificatePolicies.GetInstance(data);
+                    }
+                }
+                catch { }
+            }
+            return null;
+        }
+
         private static string X500NameToRFC2253(X509Name name)
         {
             if (IsNotNull(name))
@@ -1485,7 +1639,10 @@ namespace CertViewer
                 {
                     return Asn1Dump.DumpAsString(cert.CertificateStructure, true);
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    return e.ToString();
+                }
             }
             return string.Empty;
         }
@@ -1519,253 +1676,6 @@ namespace CertViewer
                 return text;
             }
         }
-
-        private static void Append(StringBuilder sb, string text)
-        {
-            if ((text = TrimToEmpty(text)).Length > 0)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(", ");
-                }
-                sb.Append(text.Trim());
-            }
-        }
-
-        private static void SetText(TextBox textBox, string text, bool trim = true)
-        {
-            if (IsNotNull(textBox))
-            {
-                int maxLength = textBox.MaxLength;
-                maxLength = (maxLength > 0) ? Math.Max(maxLength, 4) : int.MaxValue;
-                text = trim ? TrimToEmpty(text) : DefaultString(text);
-                textBox.Text = (text.Length > maxLength) ? $"{text.Substring(0, maxLength - 3)}..." : text;
-            }
-        }
-
-        private static void BringWindowToFront(IntPtr? hwnd)
-        {
-            if (hwnd.HasValue)
-            {
-                SetForegroundWindow(hwnd.Value);
-            }
-        }
-
-        private static Tuple<Version, Version, DateTime> GetVersionAndBuildDate()
-        {
-            try
-            {
-                Assembly executingAssembly = Assembly.GetExecutingAssembly();
-                AssemblyInformationalVersionAttribute appVersion = GetInformationalVersion(executingAssembly);
-                AssemblyInformationalVersionAttribute bcVersion = GetInformationalVersion(Assembly.GetAssembly(typeof(X509Certificate)));
-                return Tuple.Create(TryParseVersion(appVersion),
-                    TryParseVersion(bcVersion),
-                    TryParseBuildDate(executingAssembly.GetName().Version));
-            }
-            catch { }
-            return Tuple.Create(new Version(0, 0), new Version(0, 0), new DateTime(1970, 1, 1));
-        }
-
-        private static Version TryParseVersion(AssemblyInformationalVersionAttribute attrib)
-        {
-            if (IsNotNull(attrib))
-            {
-                Version version;
-                if (Version.TryParse(attrib.InformationalVersion.Split('+').First(), out version))
-                {
-                    return version;
-                }
-            }
-            return new Version();
-        }
-
-        private static AssemblyInformationalVersionAttribute GetInformationalVersion(Assembly assembly)
-        {
-            if (IsNotNull(assembly))
-            {
-                return Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute), false) as AssemblyInformationalVersionAttribute;
-            }
-            return new AssemblyInformationalVersionAttribute(string.Empty);
-        }
-        
-        private static DateTime TryParseBuildDate(Version version)
-        {
-            DateTime dateOffset = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            if (IsNotNull(version))
-            {
-                return dateOffset.Add(new TimeSpan(TimeSpan.TicksPerDay * version.Build + TimeSpan.TicksPerSecond * 2 * version.Revision));
-            }
-            return dateOffset;
-        }
-
-        private static IEnumerable<string> FilterCliArguments(IEnumerable<string> arguments)
-        {
-            if (IsNotEmpty(arguments))
-            {
-                bool flag = false;
-                foreach (string argument in arguments)
-                {
-                    if ((!flag) && argument.StartsWith("--", StringComparison.Ordinal))
-                    {
-                        if (argument.Equals("--", StringComparison.Ordinal))
-                        {
-                            flag = true;
-                        }
-                        continue;
-                    }
-                    yield return argument;
-                }
-            }
-        }
-
-        private static string DefaultString(string text, string defaultString = null)
-        {
-            return IsNotEmpty(text) ? text : (IsNotEmpty(defaultString) ? defaultString : string.Empty);
-        }
-
-        private static string EscapeString(string str, bool escapeComma = true)
-        {
-            if (IsNotEmpty(str))
-            {
-                str = str.Replace("\\", "\\\\");
-                if (escapeComma)
-                {
-                    str = str.Replace(",", "\\,");
-                }
-                str = str.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
-                return CONTROL_CHARACTERS.Value.Replace(str, string.Empty);
-            }
-            return str;
-        }
-
-        private static byte[] ReadFileContents(string filePath, int maxLength)
-        {
-            byte[] buffer = Array.Empty<byte>();
-            try
-            {
-                using (FileStream stream = TryOpenFile(filePath, FileMode.Open, FileAccess.Read))
-                {
-                    int length = (int) Math.Min(stream.Length, maxLength);
-                    if (length > 0)
-                    {
-                        buffer = new byte[length];
-                        int count, offset = 0;
-                        while (offset < length)
-                        {
-                            if ((count = stream.Read(buffer, offset, length - offset)) < 1)
-                            {
-                                return CopySubArray(buffer, offset);
-                            }
-                            offset += count;
-                        }
-                    }
-                }
-            }
-            catch { }
-            return buffer;
-        }
-
-        private static FileStream TryOpenFile(string filePath, FileMode mode, FileAccess access)
-        {
-            return DoWithRetry(32, () => File.Open(filePath, mode, access));
-        }
-
-        private static string TryPasteFromClipboard()
-        {
-            return DoWithRetry(32, () => Clipboard.GetText());
-        }
-
-        private static void TryCopyToClipboard(string text)
-        {
-            if (IsNotEmpty(text))
-            {
-                DoWithRetry(32, () => { Clipboard.SetText(text); return true; });
-            }
-        }
-
-        private static T DoWithRetry<T>(int maxTries, Func<T> operation)
-        {
-            for (int retry = 0; retry < maxTries; ++retry)
-            {
-                try
-                {
-                    return operation();
-                }
-                catch { }
-                Thread.Sleep(retry);
-            }
-            return operation();
-        }
-
-        private object GetBaseName(string fileName)
-        {
-            if (IsNotEmpty(fileName))
-            {
-                try
-                {
-                    return Path.GetFileName(fileName);
-                }
-                catch { }
-            }
-            return string.Empty;
-        }
-
-        private static byte[] CopySubArray(byte[] buffer, int length)
-        {
-            byte[] newBuffer = Array.Empty<byte>();
-            if (IsNotEmpty(buffer))
-            {
-                int newLength = Math.Min(length, buffer.Length);
-                if (newLength > 0)
-                {
-                    newBuffer = new byte[newLength];
-                    Array.Copy(buffer, newBuffer, newLength);
-                }
-            }
-            return newBuffer;
-        }
-
-        private static void GetSettingsValue(KeyValueConfigurationCollection settings, string name, Action<string> handler)
-        {
-            try
-            {
-                KeyValueConfigurationElement element = settings[name];
-                if (IsNotNull(element))
-                {
-                    string value;
-                    if (IsNotEmpty(value = element.Value))
-                    {
-                        handler(value);
-                    }
-
-                }
-            }
-            catch { }
-        }
-
-        private static bool AddIfNotExists<TKey, TValue>(Dictionary<TKey, TValue> dictionary, TKey key, TValue value)
-        {
-            if (!dictionary.ContainsKey(key))
-            {
-                dictionary.Add(key, value);
-                return true;
-            }
-            return false;
-        }
-
-        private static TValue GetValueOrDefault<TKey, TValue>(IDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue)
-        {
-            if (IsNotNull(dictionary) && IsNotNull(key))
-            {
-                TValue value;
-                if (dictionary.TryGetValue(key, out value))
-                {
-                    return value;
-                }
-            }
-            return defaultValue;
-        }
-
         private static DerObjectIdentifier MakeOid(string id)
         {
             return new DerObjectIdentifier(id);
@@ -1776,110 +1686,5 @@ namespace CertViewer
             int index = 0;
             return CollectionUtilities.ReadOnly(items.OfType<T>().ToDictionary(item => item, item => index++));
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNotNull(object value)
-        {
-            return !ReferenceEquals(value, null);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNotEmpty(byte[] data)
-        {
-            return (!ReferenceEquals(data, null)) && (data.Length > 0);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNotEmpty(string text)
-        {
-            return !string.IsNullOrEmpty(text);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNotEmpty<T>(IList<T> list)
-        {
-            return (!ReferenceEquals(list, null)) && (list.Count > 0);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsNotEmpty<T>(IEnumerable<T> items)
-        {
-            return (!ReferenceEquals(items, null)) && items.Any();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string TrimToEmpty(string text)
-        {
-            return (!ReferenceEquals(text, null)) ? text.Trim() : string.Empty;
-        }
-
-        private class OverrideCursor : IDisposable
-        {
-            private volatile bool m_disposed = false;
-
-            public OverrideCursor()
-            {
-                Mouse.OverrideCursor = Cursors.Wait;
-            }
-
-            public void Dispose()
-            {
-                if (!m_disposed)
-                {
-                    m_disposed = true;
-                    Mouse.OverrideCursor = null;
-                }
-            }
-        }
-
-        private class SetAndRestore : IDisposable
-        {
-            private volatile bool m_disposed = false;
-            private readonly Flag m_flag;
-            private readonly Dispatcher m_dispatcher;
-
-            public SetAndRestore(Flag flag, Dispatcher dispatcher)
-            {
-                if (!(IsNotNull(m_flag = flag) && IsNotNull(m_dispatcher = dispatcher)))
-                {
-                    throw new ArgumentNullException("Parameters must not be null!");
-                }
-                m_flag.Value = true;
-            }
-
-            public void Dispose()
-            {
-                if (!m_disposed)
-                {
-                    m_disposed = true;
-                    m_dispatcher.Invoke(RestoreFlagValue, DispatcherPriority.Background);
-                }
-            }
-
-            private void RestoreFlagValue()
-            {
-                m_flag.Value = false;
-            }
-        }
-
-        private class Flag { public bool Value; };
-
-        // ==================================================================
-        // Native Methods
-        // ==================================================================
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        static extern IntPtr SetClipboardViewer(IntPtr hWndNewViewer);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool ChangeClipboardChain(IntPtr hWndRemove, IntPtr hWndNewViewer);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool SetForegroundWindow(IntPtr hWnd);
     }
 }

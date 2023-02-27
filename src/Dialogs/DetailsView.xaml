@@ -20,10 +20,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:CertViewer.Dialogs"
         mc:Ignorable="d"
         Title="DNViewer"
-        Height="200" Width="384" MinWidth="384" MaxHeight="576" MaxWidth="1024"
+        Height="200" Width="384" MinWidth="384" MaxHeight="768" MaxWidth="1280"
         SizeToContent="WidthAndHeight"
         ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterOwner"
@@ -35,7 +34,8 @@
             <Setter Property="IsReadOnlyCaretVisible" Value="True"/>
             <Setter Property="AcceptsReturn" Value="False"/>
             <Setter Property="TextWrapping" Value="NoWrap"/>
-            <Setter Property="MaxLines" Value="1"/>
+            <Setter Property="MaxLines" Value="8"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="FontFamily" Value="{StaticResource HackFont}"/>
             <Setter Property="Padding" Value="4"/>
             <Setter Property="TextAlignment" Value="Left"/>
@@ -54,7 +54,7 @@
         </DockPanel>
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" DockPanel.Dock="Top" Name="ScrollView" Loaded="ScrollView_Loaded">
             <DockPanel>
-                <Grid x:Name="Layout" DockPanel.Dock="Top">
+                <Grid x:Name="Layout" DockPanel.Dock="Top" UseLayoutRounding="True">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"></ColumnDefinition>
                         <ColumnDefinition Width="*"></ColumnDefinition>

@@ -71,11 +71,19 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Dialogs\AboutDialog.xaml.cs">
+      <DependentUpon>AboutDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Utilities\Utilities.cs" />
+    <Page Include="Dialogs\AboutDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Dialogs\DetailsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="MainWindow.xaml">
+    <Page Include="Dialogs\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -86,7 +94,7 @@
     <Compile Include="Dialogs\DetailsView.xaml.cs">
       <DependentUpon>DetailsView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="MainWindow.xaml.cs">
+    <Compile Include="Dialogs\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
@@ -130,6 +138,9 @@
       <Version>5.8.0-alpha0098 </Version>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Farmhash.Sharp">
+      <Version>0.9.0</Version>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\certificate.ico" />
@@ -169,6 +180,27 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\ico_help.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_key.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_signature.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_user.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_addresses.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_authority.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_numbers.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\logo.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

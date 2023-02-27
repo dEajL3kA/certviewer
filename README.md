@@ -5,6 +5,12 @@
 ![](etc/images/certviewer_1.png)
 ![](etc/images/certviewer_2.png)
 ![](etc/images/certviewer_3.png)
+![](etc/images/certviewer_4.png)
+![](etc/images/certviewer_5.png)
+![](etc/images/certviewer_6.png)
+![](etc/images/certviewer_7.png)
+![](etc/images/certviewer_8.png)
+![](etc/images/certviewer_9.png)
 
 ## Usage
 
@@ -34,8 +40,11 @@ The ***default*** settings can be adjusted in the **`CertViewer.exe.config`** co
 
 ## Website
 
-For news and updates, please check the official GitHub project website at:  
-<https://github.com/dEajL3kA/certviewer>
+For news and updates, please check the official Git project website at:
+
+* <https://github.com/dEajL3kA/certviewer>
+
+* <https://gitlab.com/deajl3ka1/CertViewer>
 
 ## License
 
@@ -54,10 +63,16 @@ CertViewer includes the following works:
   MIT license  
   Copyright (c) 2012 Simon Cropp and contributors
 
-* **[Farm-Fresh Web](http://www.fatcow.com/free-icons) Icons by FatCow**  
-  CC BY 3.0 license  
-  Copyright (c) 2009-2014 FatCow Web Hosting
+* **[Farmhash.Sharp](https://github.com/nickbabcock/Farmhash.Sharp)  Hash Algorithm**  
+  MIT license  
+  Copyright (c) 2014-2015 Google, Inc., Nick Babcock
 
 * **[Hack Font](https://github.com/source-foundry/Hack) Typeface Design**  
   MIT license  
   Copyright (c) 2018 Source Foundry Authors
+
+* **[Farm-Fresh Web](http://www.fatcow.com/free-icons) Icons by FatCow**  
+  Free for personal and commercial use with attribution
+
+* **[Certificate Icons](https://www.flaticon.com/free-icon/certificate_3885250) by DinosoftLabs**  
+  Free for personal and commercial use with attribution
