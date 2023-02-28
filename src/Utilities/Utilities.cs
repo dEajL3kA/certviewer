@@ -38,6 +38,7 @@ using static Farmhash.Sharp.Farmhash;
 
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.Utilities.Encoders;
 
 using static CertViewer.Utilities.NativeMethods;
@@ -69,6 +70,12 @@ namespace CertViewer.Utilities
                 maxLength = (maxLength > 0) ? Math.Max(maxLength, 4) : int.MaxValue;
                 textBox.Text = (text.Length > maxLength) ? $"{text.Substring(0, maxLength - 3)}..." : text;
             }
+        }
+
+        public static IDictionary<T, int> ItemsToDictionary<T>(ItemCollection items)
+        {
+            int index = 0;
+            return CollectionUtilities.ReadOnly(items.OfType<T>().ToDictionary(item => item, item => index++));
         }
 
         public static void BringWindowToFront(IntPtr? hwnd)

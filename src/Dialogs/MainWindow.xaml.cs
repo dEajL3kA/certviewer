@@ -23,7 +23,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Media;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -791,10 +790,10 @@ namespace CertViewer.Dialogs
                             Button_CertPolicies.IsEnabled = IsNotEmpty(certificatePolicies);
                             break;
                         case 2:
-                            SetText(TextBox_Asn1Data, CreateAsn1Dump(cert), false);
+                            SetText(TextBox_Asn1Data, CreateAsn1Dump(cert.CertificateStructure), false);
                             break;
                         case 3:
-                            SetText(TextBox_PemData, CreatePemData(cert.GetEncoded()), false);
+                            SetText(TextBox_PemData, CreatePemData("CERTIFICATE", cert.CertificateStructure), false);
                             break;
                     }
                 }
@@ -879,13 +878,13 @@ namespace CertViewer.Dialogs
                             items.Add(new KeyValuePair<string, string>("value", ToHexString(subjectPublicKeyInfo.GetEncoded())));
                         }
                         Asn1Encodable parameters;
-                        if ((items.Count < 8) && IsNotNull(parameters = subjectPublicKeyInfo.AlgorithmID.Parameters))
+                        if ((items.Count < 5) && IsNotNull(parameters = subjectPublicKeyInfo.AlgorithmID.Parameters))
                         {
                             items.Add(new KeyValuePair<string, string>("parameter", ToHexString(parameters.GetEncoded())));
                         }
                     }
                     catch { }
-                    DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Public Key" };
+                    DetailsView viewer = new DetailsView(items, CreateAsn1Dump(subjectPublicKeyInfo), CreatePemData("PUBLIC KEY", subjectPublicKeyInfo)) { Owner = this, Title = "Public Key" };
                     viewer.ShowDialog(busy);
                 }
             }
@@ -984,7 +983,7 @@ namespace CertViewer.Dialogs
                         .Select(descr => new KeyValuePair<string, string>($"{descr.Item1}.{descr.Item2}", descr.Item3));
                     if (items.Any())
                     {
-                        DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Authority Information Access" };
+                        DetailsView viewer = new DetailsView(items, CreateAsn1Dump(authorityInformationAccess)) { Owner = this, Title = "Authority Information Access" };
                         viewer.ShowDialog(busy);
                     }
                 }
@@ -1001,7 +1000,7 @@ namespace CertViewer.Dialogs
                         .Select(item => new KeyValuePair<string, string>($"policy[{item.Item1}].{item.Item2}", item.Item3));
                     if (items.Any())
                     {
-                        DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Certificate Policies" };
+                        DetailsView viewer = new DetailsView(items, CreateAsn1Dump(certificatePolicies)) { Owner = this, Title = "Certificate Policies" };
                         viewer.ShowDialog(busy);
                     }
                 }
@@ -1025,7 +1024,7 @@ namespace CertViewer.Dialogs
                         .Select(name => new KeyValuePair<string, string>($"distPoint[{name.Item1}].{name.Item2}", name.Item3));
                     if (items.Any())
                     {
-                        DetailsView viewer = new DetailsView(items) { Owner = this, Title = "CRL Distribution Points" };
+                        DetailsView viewer = new DetailsView(items, CreateAsn1Dump(crlDistPoints)) { Owner = this, Title = "CRL Distribution Points" };
                         viewer.ShowDialog(busy);
                     }
                 }
@@ -1607,16 +1606,16 @@ namespace CertViewer.Dialogs
             return string.Empty;
         }
 
-        private static string CreatePemData(byte[] content)
+        private static string CreatePemData(string name, Asn1Encodable ans1object)
         {
-            if (IsNotEmpty(content))
+            if (IsNotEmpty(name) && IsNotNull(ans1object))
             {
                 try
                 {
                     using (StringWriter textWriter = new StringWriter())
                     {
                         PemWriter pemWriter = new PemWriter(textWriter);
-                        pemWriter.WriteObject(new PemObject("CERTIFICATE", content));
+                        pemWriter.WriteObject(new PemObject(name, ans1object.GetDerEncoded()));
                         textWriter.Flush();
                         return textWriter.ToString();
                     }
@@ -1626,13 +1625,13 @@ namespace CertViewer.Dialogs
             return string.Empty;
         }
 
-        private static string CreateAsn1Dump(X509Certificate cert)
+        private static string CreateAsn1Dump(Asn1Encodable ans1object)
         {
-            if (IsNotNull(cert))
+            if (IsNotNull(ans1object))
             {
                 try
                 {
-                    return Asn1Dump.DumpAsString(cert.CertificateStructure, true);
+                    return Asn1Dump.DumpAsString(ans1object, true);
                 }
                 catch (Exception e)
                 {
@@ -1674,12 +1673,6 @@ namespace CertViewer.Dialogs
         private static DerObjectIdentifier MakeOid(string id)
         {
             return new DerObjectIdentifier(id);
-        }
-
-        private static IDictionary<T, int> ItemsToDictionary<T>(ItemCollection items)
-        {
-            int index = 0;
-            return CollectionUtilities.ReadOnly(items.OfType<T>().ToDictionary(item => item, item => index++));
         }
     }
 }

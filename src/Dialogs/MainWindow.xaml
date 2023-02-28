@@ -47,7 +47,6 @@
         <BitmapImage x:Key="ImageSource_Extensions" UriSource="../Resources/ico_extensions.png"/>
         <BitmapImage x:Key="ImageSource_Help" UriSource="../Resources/ico_help.png"/>
         <BitmapImage x:Key="ImageSource_Key" UriSource="../Resources/ico_key.png"/>
-        <BitmapImage x:Key="ImageSource_Lightbulb" UriSource="../Resources/ico_lightbulb.png"/>
         <BitmapImage x:Key="ImageSource_Numbers" UriSource="../Resources/ico_numbers.png"/>
         <BitmapImage x:Key="ImageSource_Report" UriSource="../Resources/ico_report.png"/>
         <BitmapImage x:Key="ImageSource_Settings" UriSource="../Resources/ico_settings.png"/>

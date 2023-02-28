@@ -173,9 +173,6 @@
     <Resource Include="Resources\ico_copy.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\ico_lightbulb.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\ico_extensions.png" />
   </ItemGroup>
   <ItemGroup>
@@ -204,6 +201,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\logo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_information.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -29,12 +29,15 @@
         WindowStyle="ToolWindow" ShowInTaskbar="False">
 
     <Window.Resources>
+        <BitmapImage x:Key="ImageSource_Clipboard" UriSource="../Resources/ico_clipboard.png"/>
+        <BitmapImage x:Key="ImageSource_Details" UriSource="../Resources/ico_details.png"/>
+        <BitmapImage x:Key="ImageSource_Information" UriSource="../Resources/ico_information.png"/>
         <Style TargetType="{x:Type TextBox}" x:Key="ValueStyle">
             <Setter Property="IsReadOnly" Value="True"/>
             <Setter Property="IsReadOnlyCaretVisible" Value="True"/>
             <Setter Property="AcceptsReturn" Value="False"/>
             <Setter Property="TextWrapping" Value="NoWrap"/>
-            <Setter Property="MaxLines" Value="8"/>
+            <Setter Property="MaxLines" Value="16"/>
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="FontFamily" Value="{StaticResource HackFont}"/>
             <Setter Property="Padding" Value="4"/>
@@ -47,21 +50,49 @@
     </Window.Resources>
 
     <DockPanel  Margin="8" UseLayoutRounding="True">
-        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <Button Content="Discard" Click="Button_Discard_Click" Padding="20,5,20,5" DockPanel.Dock="Right" FontWeight="Bold"></Button>
             <Button Content="Copy to Clipboard" Click="Button_CopyToCLipboard_Click" Padding="20,5,20,5" DockPanel.Dock="Right" Margin="0,0,8,0"></Button>
             <Grid></Grid>
         </DockPanel>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" DockPanel.Dock="Top" Name="ScrollView" Loaded="ScrollView_Loaded">
-            <DockPanel>
-                <Grid x:Name="Layout" DockPanel.Dock="Top" UseLayoutRounding="True">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"></ColumnDefinition>
-                        <ColumnDefinition Width="*"></ColumnDefinition>
-                    </Grid.ColumnDefinitions>
-                </Grid>
-                <Grid DockPanel.Dock="Bottom"></Grid>
-            </DockPanel>
-        </ScrollViewer>
+        <TabControl DockPanel.Dock="Top" UseLayoutRounding="True" Name="TabControl" SelectionChanged="TabControl_SelectionChanged">
+            <TabItem Name="Tab_Details" Visibility="Collapsed">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                        <Image Source="{StaticResource ImageSource_Information}" Stretch="None"/>
+                        <TextBlock Text="Properties" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Name="ScrollView" Loaded="ScrollView_Loaded" Margin="4">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" x:Name="DatailsPane" UseLayoutRounding="True">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                        <Grid DockPanel.Dock="Bottom"></Grid>
+                    </DockPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Name="Tab_Asn1Data" Visibility="Collapsed" IsEnabled="False">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                        <Image Source="{StaticResource ImageSource_Details}" Stretch="None"/>
+                        <TextBlock Text="ASN.1 Outline" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <TextBox DockPanel.Dock="Top" Name="TextBox_Asn1Data" Padding="4" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap" Margin="4"></TextBox>
+            </TabItem>
+            <TabItem Name="Tab_PemData" Visibility="Collapsed" IsEnabled="False">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,3,0">
+                        <Image Source="{StaticResource ImageSource_Clipboard}" Stretch="None"/>
+                        <TextBlock Text="PEM Data" FontWeight="Black" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <TextBox DockPanel.Dock="Top" Name="TextBox_PemData" Padding="4" FontFamily="{StaticResource HackFont}" IsReadOnly="True" IsReadOnlyCaretVisible="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" AcceptsReturn="False" TextWrapping="NoWrap" Margin="4"></TextBox>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </Window>
