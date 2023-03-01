@@ -46,7 +46,7 @@ using static CertViewer.Utilities.Utilities;
 
 namespace CertViewer.Utilities
 {
-    public enum DigestAlgo { MD5, RIPEMD160, SHA1, BLAKE2_160, BLAKE2_256, SHA224, SHA256, SHA3_224, SHA3_256 }
+    public enum DigestAlgo { MD5, RIPEMD128, RIPEMD160, RIPEMD256, SHA1, BLAKE2_160, BLAKE2_256, BLAKE3, SHA224, SHA256, SHA3_224, SHA3_256 }
 
     static class Utilities
     {

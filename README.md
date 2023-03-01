@@ -2,6 +2,7 @@
 
 **A simple X.509 certificate viewer for Microsoft Windows.**
 
+![](etc/images/certviewer_0.png)
 ![](etc/images/certviewer_1.png)
 ![](etc/images/certviewer_2.png)
 ![](etc/images/certviewer_3.png)
@@ -24,27 +25,44 @@ The [.NET Framework 4.7.2](https://dotnet.microsoft.com/en-us/download/dotnet-fr
 
 It is already included in Windows 10 v1803 (April 2018 Update) or later, and *all* versions of Windows 11.
 
-# Default settings
+# Program settings
 
-The ***default*** settings can be adjusted in the **`CertViewer.exe.config`** configuration file:
+The initial program settings can be adjusted in the **`CertViewer.exe.config`** configuration file.
+
+All settings are specified in the **`/configuration/appSettings`** section:
 
 * **`DigestAlgorithm`**  
-  Default digest algorithms for "fingerprint" computation  
-  `MD5`, `RIPEMD160`, `SHA1`, `BLAKE2_160`, `BLAKE2_256`, `SHA224`, `SHA256`, `SHA3_224`, or `SHA3_256`
+  The digest algorithm to be used for "fingerprint" computation. Default value: `SHA256`.
+
+  *Supported digest algorithms:*  
+  `MD5`, `RIPEMD160`, `SHA1`, `BLAKE2_160`, `BLAKE2_256`, `BLAKE3`, `SHA224`, `SHA256`, `SHA3_224`, `SHA3_256`
 
 * **`Topmost`**  
-  Keep the CertViewer window on top of all other windows (boolean)
+  Keep the CertViewer window on top of all other windows. Default value: `True`.
 
 * **`MonitorClipboard`**  
-  Monitor the clipboard for "viewable" certificates in the PEM format (boolean)
+  Monitor the clipboard for "viewable" certificates in the PEM format. Default value: `True`.
+
+* **`ReverseNameOrder`**  
+  Display distinguished name components in *reverse* order (as per RFC 2253). Default value: `True`.
 
 ## Website
 
-For news and updates, please check the official Git project website at:
+For news and updates, please check the official project website at:  
+<https://deajl3ka.github.io/certviewer/>
+
+**Git mirrors:**
 
 * <https://github.com/dEajL3kA/certviewer>
-
 * <https://gitlab.com/deajl3ka1/CertViewer>
+
+## Contact information
+
+E-Mail:  
+<Cumpoing79@web.de>
+
+OpenPGP key:  
+[`F81B 9C6C 6C3A 7F46 4173  3F5E E9C6 473D 4E97 DAD1`](https://keys.openpgp.org/vks/v1/by-fingerprint/F81B9C6C6C3A7F4641733F5EE9C6473D4E97DAD1)
 
 ## License
 

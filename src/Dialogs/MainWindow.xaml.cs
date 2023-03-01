@@ -76,6 +76,7 @@ namespace CertViewer.Dialogs
 
         public X509Certificate Certificate { get; private set; } = null;
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
+        public bool ReverseNameOrder { get; private set; } = true;
         public bool EnableMonitorClipboard { get; private set; } = true;
 
         private readonly uint m_processId;
@@ -568,6 +569,14 @@ namespace CertViewer.Dialogs
                         EnableMonitorClipboard = booleanValue;
                     }
                 });
+                GetSettingsValue(settings, "ReverseNameOrder", value =>
+                {
+                    bool booleanValue;
+                    if (bool.TryParse(value, out booleanValue))
+                    {
+                        ReverseNameOrder = booleanValue;
+                    }
+                });
             }
             catch { }
         }
@@ -710,10 +719,10 @@ namespace CertViewer.Dialogs
                 m_tabInitialized.Clear();
                 if (success = IsNotNull(Certificate = cert))
                 {
-                    string subjectDN = EscapeString(X500NameToRFC2253(cert.SubjectDN), false);
+                    string subjectDN = EscapeString(X500NameToRFC2253(cert.SubjectDN, ReverseNameOrder), false);
                     SetText(TextBox_Subject, DefaultString(subjectDN, UNSPECIFIED));
                     Button_SubjectDN.IsEnabled = IsNotEmpty(subjectDN);
-                    string issuerDN = EscapeString(X500NameToRFC2253(cert.IssuerDN), false);
+                    string issuerDN = EscapeString(X500NameToRFC2253(cert.IssuerDN, ReverseNameOrder), false);
                     SetText(TextBox_Issuer, DefaultString(issuerDN, UNSPECIFIED));
                     Button_IssuerDN.IsEnabled = IsNotEmpty(issuerDN);
                     SetText(TextBox_Serial, $"0x{ToHexString(cert.SerialNumber)}");
@@ -816,7 +825,7 @@ namespace CertViewer.Dialogs
                                 .Zip(valList, (key, value) => new KeyValuePair<string, string>(key, value));
                         if (items.Any())
                         {
-                            DetailsView viewer = new DetailsView(items.Reverse()) { Owner = this, Title = title };
+                            DetailsView viewer = new DetailsView(ReverseNameOrder ? items.Reverse() : items) { Owner = this, Title = title };
                             viewer.ShowDialog(busy);
                         }
                     }
@@ -1040,7 +1049,9 @@ namespace CertViewer.Dialogs
                     switch (DigestAlgorithm)
                     {
                         case DigestAlgo.MD5:        return DigestUtilities.CalculateDigest("MD5",         cert.GetEncoded());
+                        case DigestAlgo.RIPEMD128:  return DigestUtilities.CalculateDigest("RIPEMD-128",  cert.GetEncoded());
                         case DigestAlgo.RIPEMD160:  return DigestUtilities.CalculateDigest("RIPEMD-160",  cert.GetEncoded());
+                        case DigestAlgo.RIPEMD256:  return DigestUtilities.CalculateDigest("RIPEMD-256",  cert.GetEncoded());
                         case DigestAlgo.SHA1:       return DigestUtilities.CalculateDigest("SHA-1",       cert.GetEncoded());
                         case DigestAlgo.SHA224:     return DigestUtilities.CalculateDigest("SHA-224",     cert.GetEncoded());
                         case DigestAlgo.SHA256:     return DigestUtilities.CalculateDigest("SHA-256",     cert.GetEncoded());
@@ -1048,6 +1059,7 @@ namespace CertViewer.Dialogs
                         case DigestAlgo.SHA3_256:   return DigestUtilities.CalculateDigest("SHA3-256",    cert.GetEncoded());
                         case DigestAlgo.BLAKE2_160: return DigestUtilities.CalculateDigest("BLAKE2B-160", cert.GetEncoded());
                         case DigestAlgo.BLAKE2_256: return DigestUtilities.CalculateDigest("BLAKE2B-256", cert.GetEncoded());
+                        case DigestAlgo.BLAKE3:     return DigestUtilities.CalculateDigest("BLAKE3-256",  cert.GetEncoded());
                     }
                 }
                 catch { }
@@ -1589,14 +1601,14 @@ namespace CertViewer.Dialogs
             return null;
         }
 
-        private static string X500NameToRFC2253(X509Name name)
+        private static string X500NameToRFC2253(X509Name name, bool reverse)
         {
             if (IsNotNull(name))
             {
                 try
                 {
                     string value;
-                    if (IsNotEmpty(value = name.ToString(true, X509_NAME_ATTRIBUTES.Value)))
+                    if (IsNotEmpty(value = name.ToString(reverse, X509_NAME_ATTRIBUTES.Value)))
                     {
                         return value;
                     }

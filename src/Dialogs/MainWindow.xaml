@@ -102,7 +102,9 @@
         </Style>
         <ContextMenu x:Key="Menu_DigestAlgo">
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.MD5}"><MenuItem.Header>MD5</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.RIPEMD128}"><MenuItem.Header>RIPEMD-128</MenuItem.Header></MenuItem>
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.RIPEMD160}"><MenuItem.Header>RIPEMD-160</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.RIPEMD256}"><MenuItem.Header>RIPEMD-256</MenuItem.Header></MenuItem>
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA1}"><MenuItem.Header>SHA-1</MenuItem.Header></MenuItem>
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA224}"><MenuItem.Header>SHA-224</MenuItem.Header></MenuItem>
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA256}"><MenuItem.Header>SHA-256</MenuItem.Header></MenuItem>
@@ -110,6 +112,7 @@
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.SHA3_256}"><MenuItem.Header>SHA3-256</MenuItem.Header></MenuItem>
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.BLAKE2_160}"><MenuItem.Header>BLAKE2-160</MenuItem.Header></MenuItem>
             <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.BLAKE2_256}"><MenuItem.Header>BLAKE2-256</MenuItem.Header></MenuItem>
+            <MenuItem IsCheckable="True" Checked="MenuItem_DigestAlgo_Checked" Unchecked="MenuItem_DigestAlgo_Unchecked" Tag="{x:Static local:DigestAlgo.BLAKE3}"><MenuItem.Header>BLAKE3</MenuItem.Header></MenuItem>
             <Separator/>
             <MenuItem Click="MenuItem_CopyDigest_Click"><MenuItem.Header>Copy Digest</MenuItem.Header><MenuItem.Icon><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></MenuItem.Icon></MenuItem>
         </ContextMenu>
