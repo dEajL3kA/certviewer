@@ -46,7 +46,7 @@
         </Style>
     </Window.Resources>
     
-    <DockPanel Margin="24,24,24,16">
+    <DockPanel Margin="24,24,24,16" UseLayoutRounding="True">
         <Grid DockPanel.Dock="Bottom" Margin="0,36,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"></ColumnDefinition>

@@ -41,6 +41,7 @@ using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.EC;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math.EC;
+using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.Utilities.IO.Pem;
@@ -147,7 +148,7 @@ namespace CertViewer.Dialogs
         {
             try
             {
-                e.Effects = ((OwnedWindows.Count == 0) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
+                e.Effects = (IsWindowEnabled(m_hWndSelf) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
             }
             catch { }
             e.Handled = true;
@@ -162,7 +163,7 @@ namespace CertViewer.Dialogs
         {
             try
             {
-                if (OwnedWindows.Count == 0)
+                if (IsWindowEnabled(m_hWndSelf))
                 {
                     string[] droppedFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
                     if (IsNotNull(droppedFiles))
@@ -209,7 +210,7 @@ namespace CertViewer.Dialogs
             m_clipbrdTimer.Stop();
             try
             {
-                if (EnableMonitorClipboard && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
+                if (EnableMonitorClipboard && (!OwnedWindows.OfType<PasswordDialog>().Any()) && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
                 {
                     ParseCertificateFromClipboard();
                 }
@@ -460,6 +461,7 @@ namespace CertViewer.Dialogs
         {
             m_clipbrdHash = HashCode.Empty;
             Certificate = null;
+            Title = BASE_TITLE;
             TextBox_Asn1Data.Text = TextBox_BasicConstraints.Text = TextBox_Fingerprint.Text = 
                 TextBox_ExtKeyUsage.Text = TextBox_Issuer.Text = TextBox_KeyUsage.Text = TextBox_NotAfter.Text =
                 TextBox_NotBefore.Text = TextBox_PemData.Text = TextBox_PublicKey.Text = TextBox_Serial.Text =
@@ -492,8 +494,8 @@ namespace CertViewer.Dialogs
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount == 2))
             {
                 OpenFileDialog openFileDialog = new OpenFileDialog();
-                openFileDialog.Filter = "Certificate Files|*.pem;*.der;*.cer;*.crt|All Files|*.*";
-                if (openFileDialog.ShowDialog().GetValueOrDefault(false))
+                openFileDialog.Filter = "Certificate Files|*.pem;*.der;*.cer;*.crt;*.p12;*.pfx|All Files|*.*";
+                if (openFileDialog.ShowDialog(this).GetValueOrDefault(false))
                 {
                     ParseCertificateFile(openFileDialog.FileName);
                 }
@@ -629,7 +631,7 @@ namespace CertViewer.Dialogs
                             while (match.Success)
                             {
                                 Title = $"Clipboard \u2013 {BASE_TITLE}";
-                                if (ParseCertificateData(match.Groups[1].Value))
+                                if (ParseCertificateData(match.Groups[1].Value, busy))
                                 {
                                     return true;
                                 }
@@ -667,13 +669,16 @@ namespace CertViewer.Dialogs
                                 Match match = PEM_CERTIFICATE.Value.Match(Encoding.UTF8.GetString(data));
                                 while (match.Success)
                                 {
-                                    if (ParseCertificateData(match.Groups[1].Value))
+                                    if (ParseCertificateData(match.Groups[1].Value, busy))
                                     {
                                         return true;
                                     }
                                     match = match.NextMatch();
                                 }
-                                return ParseCertificateData(data);
+                                if (ParseCertificateData(data, busy))
+                                {
+                                    return true;
+                                }
                             }
                         }
                     }
@@ -688,7 +693,7 @@ namespace CertViewer.Dialogs
             return false;
         }
 
-        private bool ParseCertificateData(string base64text)
+        private bool ParseCertificateData(string base64text, OverrideCursor busy)
         {
             try
             {
@@ -697,7 +702,7 @@ namespace CertViewer.Dialogs
                     base64text = INVALID_BASE64_CHARS.Value.Replace(base64text, string.Empty);
                     if (base64text.Length > 0)
                     {
-                        return ParseCertificateData(Convert.FromBase64String(AddPadding(base64text)));
+                        return ParseCertificateData(Convert.FromBase64String(AddPadding(base64text)), busy);
                     }
                 }
             }
@@ -710,12 +715,12 @@ namespace CertViewer.Dialogs
             return false;
         }
 
-        private bool ParseCertificateData(byte[] data)
+        private bool ParseCertificateData(byte[] data, OverrideCursor busy)
         {
             bool success = false;
             try
             {
-                X509Certificate cert = new X509CertificateParser().ReadCertificate(data);
+                X509Certificate cert = ReadCertificateFile(data, busy);
                 m_tabInitialized.Clear();
                 if (success = IsNotNull(Certificate = cert))
                 {
@@ -808,6 +813,75 @@ namespace CertViewer.Dialogs
                 }
                 catch { }
             }
+        }
+
+        private X509Certificate ReadCertificateFile(byte[] data, OverrideCursor busy)
+        {
+            if (IsNotEmpty(data))
+            {
+                X509Certificate cert;
+                try
+                {
+                    if (IsNotNull(cert = new X509CertificateParser().ReadCertificate(data)))
+                    {
+                        return cert;
+                    }
+                }
+                catch
+                {
+                    if (IsNotNull(cert = ReadPkcs12File(data, busy)))
+                    {
+                        return cert;
+                    }
+                    throw;
+                }
+                return ReadPkcs12File(data, busy);
+            }
+            return null;
+        }
+
+        private X509Certificate ReadPkcs12File(byte[] data, OverrideCursor busy, string password = null, uint retry = 0)
+        {
+            if (IsNotEmpty(data))
+            {
+                try
+                {
+                    Pkcs12Store pkcs12Store = new Pkcs12StoreBuilder().Build();
+                    using (MemoryStream stream = new MemoryStream(data, false))
+                    {
+                        pkcs12Store.Load(stream, IsNotEmpty(password) ? password.ToCharArray() : Array.Empty<char>());
+                        X509CertificateEntry entry;
+                        foreach (string alias in pkcs12Store.Aliases)
+                        {
+                            if (IsNotNull(entry = pkcs12Store.GetCertificate(alias)))
+                            {
+                                X509Certificate cert;
+                                if (IsNotNull(cert = entry.Certificate))
+                                {
+                                    return cert;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    const uint MAX_PASSWORD_ATTEMPTS = 8;
+                    if ((e is IOException ex) && (ex.Message.IndexOf("wrong password", StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        if (retry < MAX_PASSWORD_ATTEMPTS)
+                        {
+                            PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "PKCS#12 Password" };
+                            if (dialog.ShowDialog(busy).GetValueOrDefault(false))
+                            {
+                                return ReadPkcs12File(data, busy, dialog.Password, retry + 1U);
+                            }
+                        }
+                        throw;
+                    }
+                }
+            }
+            return null;
         }
 
         private void ShowDistinguishedNameDetails(X509Name name, string title)

@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Media;
-using System.Reflection;
-using System.Security.Policy;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;

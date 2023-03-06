@@ -402,6 +402,10 @@ namespace CertViewer.Utilities
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindowEnabled(IntPtr hWnd);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)]

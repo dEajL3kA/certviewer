@@ -116,6 +116,7 @@
             <Separator/>
             <MenuItem Click="MenuItem_CopyDigest_Click"><MenuItem.Header>Copy Digest</MenuItem.Header><MenuItem.Icon><Image Source="{StaticResource ImageSource_Copy}" Stretch="None"/></MenuItem.Icon></MenuItem>
         </ContextMenu>
+        <local:FontSizeConverter x:Key="FontSize_Smaller" Ratio="0.8"/>
     </Window.Resources>
 
     <DockPanel LastChildFill="True" Margin="8" UseLayoutRounding="True">
@@ -143,7 +144,7 @@
                                 <RowDefinition Height="auto"></RowDefinition>
                             </Grid.RowDefinitions>
                             <Image Grid.Row="1" Source="{StaticResource ImageSource_Banner}" Stretch="None" MouseDown="Image_Placeholder_MouseDown" Cursor="Hand"/>
-                            <Label Grid.Row="3" Name="Label_ErrorText" Background="DarkRed" Foreground="WhiteSmoke" FontFamily="{StaticResource HackFont}" HorizontalAlignment="Center" Padding="8,2,8,2" Visibility="Hidden" MouseDown="Label_ErrorText_MouseDown" Margin="0,0,0,4"></Label>
+                            <Label Grid.Row="3" Name="Label_ErrorText" Background="DarkRed" Foreground="WhiteSmoke" FontFamily="{StaticResource HackFont}" FontSize="{Binding FontSize, Converter={StaticResource FontSize_Smaller}, RelativeSource={RelativeSource FindAncestor, AncestorType=Control}}" HorizontalAlignment="Center" Padding="4,2,4,2" Visibility="Hidden" MouseDown="Label_ErrorText_MouseDown" Margin="0,0,0,4"></Label>
                         </Grid>
                         <StackPanel Margin="8,8,8,14" Name="Panel_CertInfo">
                             <Label Content="Subject DN:" FontWeight="SemiBold" Margin="0,0,0,0" Padding="0"></Label>

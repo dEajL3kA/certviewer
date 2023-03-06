@@ -23,9 +23,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 using static CertViewer.Utilities.Utilities;
+using static CertViewer.Utilities.NativeMethods;
 
 namespace CertViewer.Dialogs
 {
@@ -81,6 +84,12 @@ namespace CertViewer.Dialogs
                 MaxHeight = m_scrollbar ? double.PositiveInfinity : ActualHeight;
                 SizeToContent = SizeToContent.Manual;
             }
+            try
+            {
+                SetForegroundWindow(new WindowInteropHelper(this).Handle);
+            }
+            catch { }
+            Keyboard.ClearFocus();
         }
 
         private void ScrollView_Loaded(object sender, RoutedEventArgs e)
