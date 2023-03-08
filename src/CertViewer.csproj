@@ -212,5 +212,11 @@
   <ItemGroup>
     <Resource Include="Resources\ico_information.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\logo_santa.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\hohoho.wav" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

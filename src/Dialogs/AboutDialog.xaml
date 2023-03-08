@@ -27,10 +27,11 @@
         ResizeMode="NoResize"
         SizeToContent="WidthAndHeight"
         Title="About..."
-        Height="380" Width="600">
+        Height="420" Width="600">
 
     <Window.Resources>
-        <BitmapImage x:Key="ImageSource_Logo" UriSource="../Resources/logo.png"/>
+        <BitmapImage x:Key="ImageSource_Logo1" UriSource="../Resources/logo.png"/>
+        <BitmapImage x:Key="ImageSource_Logo2" UriSource="../Resources/logo_santa.png"/>
         <SolidColorBrush x:Key="HyperlinkColor_Default" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}"/>
         <SolidColorBrush x:Key="HyperlinkColor_Hovered" Color="{DynamicResource {x:Static SystemColors.HotTrackColorKey}}"/>
         <local:FontSizeConverter x:Key="FontSizeConverter" Ratio="1.2" />
@@ -55,18 +56,18 @@
             </Grid.ColumnDefinitions>
             <Button Grid.Column="1" Content="Discard" Padding="30,5,30,5" FontWeight="Bold" Click="Button_Discard_Click"></Button>
         </Grid>
-        <Image DockPanel.Dock="Left" Source="{StaticResource ImageSource_Logo}" RenderOptions.BitmapScalingMode="Fant" MaxWidth="64" MaxHeight="64" VerticalAlignment="Top"></Image>
+        <Image DockPanel.Dock="Left" Name="Logo" Source="{StaticResource ImageSource_Logo1}" RenderOptions.BitmapScalingMode="Fant" MaxWidth="64" MaxHeight="64" VerticalAlignment="Top"></Image>
         <StackPanel DockPanel.Dock="Right" Margin="16,0,0,0">
             <Label Padding="0"><TextBlock Name="AboutText" FontSize="{Binding FontSize, Converter={StaticResource FontSizeConverter}, RelativeSource={RelativeSource FindAncestor, AncestorType=Control}}">
                 <Bold FontWeight="SemiBold">CertViewer v<Run Name="VersionNumber_Application">1.0.0</Run>, built on <Run Name="BuildDate">1970-01-01</Run></Bold><LineBreak/>
-                Copyright (c) 2023 &quot;dEajL3kA&quot; &lt;Cumpoing79@web.de&gt;<LineBreak/>
+                Copyright (c) <Run Name="CopyrightYear">2000</Run> &#8220;dEajL3kA&#8221; &lt;Cumpoing79@web.de&gt;<LineBreak/>
                 Released under the MIT license<LineBreak/>
-                Website: <Span Style="{StaticResource Hyperlink}"><Run MouseUp="Span_Hyperlink_MouseUp">https://github.com/dEajL3kA/certviewer</Run></Span><LineBreak/>
+                Website: <Span Style="{StaticResource Hyperlink}"><Run MouseUp="Span_Hyperlink_MouseUp">https://deajl3ka.github.io/certviewer/</Run></Span><LineBreak/>
                 <LineBreak/>
                 <Bold FontWeight="SemiBold">Bouncy Castle Cryptography Library v<Run Name="VersionNumber_BouncyCastle">1.0.0</Run></Bold><LineBreak/>
                 Copyright (c) 2000-2023 The Legion of the Bouncy Castle<LineBreak/>
                 Released under the MIT license<LineBreak/>
-                Website: <Span Style="{StaticResource Hyperlink}"><Run MouseUp="Span_Hyperlink_MouseUp">https://github.com/bcgit/bc-csharp</Run></Span><LineBreak/>
+                Website: <Span Style="{StaticResource Hyperlink}"><Run MouseUp="Span_Hyperlink_MouseUp">https://www.bouncycastle.org/csharp/</Run></Span><LineBreak/>
                 <LineBreak/>
                 Running on .NET Framework v<Run Name="VersionNumber_Framework">1.0.0</Run><LineBreak/>
                 <LineBreak/>

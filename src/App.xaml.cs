@@ -11,6 +11,11 @@ namespace CertViewer
 {
     public partial class App : Application
     {
+        private static class Const
+        {
+            internal static readonly string MAX_KEY_SIZE = (1U << 16).ToString();
+        }
+
         public App()
         {
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(ExceptionHandler);
@@ -18,18 +23,18 @@ namespace CertViewer
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            const ushort MAX_KEY_SIZE = 32768;
+            const string BOUNCY = "Org.BouncyCastle.";
             try
             {
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.EC.Fp_MaxSize", MAX_KEY_SIZE.ToString());
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.Rsa.MaxSize", MAX_KEY_SIZE.ToString());
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.Asn1.AllowUnsafeInteger", string.Empty);
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.EC.Fp_Certainty", string.Empty);
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.Fpe.Disable", string.Empty);
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.Fpe.Disable_Ff1", string.Empty);
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.Pkcs1.Strict", string.Empty);
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.Pkcs12.IgnoreUselessPassword", string.Empty);
-                Environment.SetEnvironmentVariable("Org.BouncyCastle.X509.Allow_Non-DER_TBSCert", string.Empty);
+                Environment.SetEnvironmentVariable(BOUNCY + "EC.Fp_MaxSize", Const.MAX_KEY_SIZE);
+                Environment.SetEnvironmentVariable(BOUNCY + "Rsa.MaxSize", Const.MAX_KEY_SIZE);
+                Environment.SetEnvironmentVariable(BOUNCY + "Asn1.AllowUnsafeInteger", string.Empty);
+                Environment.SetEnvironmentVariable(BOUNCY + "EC.Fp_Certainty", string.Empty);
+                Environment.SetEnvironmentVariable(BOUNCY + "Fpe.Disable", string.Empty);
+                Environment.SetEnvironmentVariable(BOUNCY + "Fpe.Disable_Ff1", string.Empty);
+                Environment.SetEnvironmentVariable(BOUNCY + "Pkcs1.Strict", string.Empty);
+                Environment.SetEnvironmentVariable(BOUNCY + "Pkcs12.IgnoreUselessPassword", string.Empty);
+                Environment.SetEnvironmentVariable(BOUNCY + "X509.Allow_Non-DER_TBSCert", string.Empty);
             }
             catch { }
             try
@@ -68,7 +73,7 @@ namespace CertViewer
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void Require(Type _) { }
 
-        [DllImport("kernel32.dll", CallingConvention=CallingConvention.Winapi, ExactSpelling=true, CharSet=CharSet.Unicode, EntryPoint="FatalAppExitW")]
+        [DllImport("kernel32.dll", ExactSpelling=true, CharSet=CharSet.Unicode, EntryPoint="FatalAppExitW")]
         [SuppressUnmanagedCodeSecurity]
         private static extern void FatalAppExit(uint reserved, string message);
     }
