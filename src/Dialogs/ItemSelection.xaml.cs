@@ -16,6 +16,7 @@
  * OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -27,7 +28,7 @@ using static CertViewer.Utilities.NativeMethods;
 
 namespace CertViewer.Dialogs
 {
-    public partial class PasswordDialog : Window, UserInputDialog
+    public partial class ItemSelection : Window, UserInputDialog
     {
         private bool m_initialized = false;
 
@@ -35,22 +36,24 @@ namespace CertViewer.Dialogs
         // Constructor
         // ==================================================================
 
-        public PasswordDialog(string password, uint currentAttempt, uint maxAttempts)
+        public ItemSelection(IEnumerable<string> availableItems)
         {
             InitializeComponent();
-            Attempts.Content = ((currentAttempt > 0) && (maxAttempts >= currentAttempt)) ? $"Attempt {currentAttempt} of {maxAttempts}" : string.Empty;
-            if (IsNotEmpty(password))
+            if (IsNotNull(availableItems))
             {
-                PasswordBox.Password = password;
-                PasswordBox.SelectAll();
+                ItemView.Items.Clear();
+                foreach (string item in availableItems)
+                {
+                    ItemView.Items.Add(item);
+                }
             }
         }
 
-        public string Password
+        public string SelectedItem
         {
             get
             {
-                return PasswordBox.Password;
+                return ItemView.SelectedItem as string;
             }
         }
 
@@ -65,14 +68,14 @@ namespace CertViewer.Dialogs
             {
                 m_initialized = true;
                 MinHeight = MaxHeight = ActualHeight;
-                MinWidth = ActualWidth;
+                MinWidth = MaxWidth = ActualWidth;
                 SizeToContent = SizeToContent.Manual;
                 try
                 {
                     SetForegroundWindow(new WindowInteropHelper(this).Handle);
                 }
                 catch { }
-                PasswordBox.Focus();
+                SelectFirstItem(ItemView);
             }
         }
 
@@ -94,9 +97,15 @@ namespace CertViewer.Dialogs
             Close();
         }
 
-        private void PasswordBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void ItemView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if ((e.Key == Key.Return) || (e.Key == Key.Enter))
+            DialogResult = true;
+            Close();
+        }
+
+        private void ItemView_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (((e.Key == Key.Return) || (e.Key == Key.Enter)) && IsNotNull(ItemView.SelectedItem))
             {
                 e.Handled = true;
                 Button_OK_Click(sender, e);
@@ -109,6 +118,33 @@ namespace CertViewer.Dialogs
             {
                 e.Handled = true;
                 Button_Cancel_Click(sender, e);
+            }
+        }
+
+        // ==================================================================
+        // Utility Methods
+        // ==================================================================
+
+        private static void SelectFirstItem(ListBox listBox)
+        {
+            if (IsNotNull(listBox))
+            {
+                ItemCollection items;
+                if (IsNotEmpty(items = listBox.Items))
+                {
+                    object selectedItem = listBox.SelectedItem = items[0];
+                    ItemContainerGenerator generator;
+                    if (IsNotNull(selectedItem) && IsNotNull(generator = listBox.ItemContainerGenerator))
+                    {
+                        ListBoxItem container;
+                        if (IsNotNull(container = generator.ContainerFromItem(selectedItem) as ListBoxItem))
+                        {
+                            container.Focus();
+                            return;
+                        }
+                    }
+                }
+                listBox.Focus();
             }
         }
     }

@@ -43,6 +43,7 @@ using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math.EC;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.Utilities.IO.Pem;
 using Org.BouncyCastle.X509;
@@ -61,6 +62,7 @@ namespace CertViewer.Dialogs
         private const int WM_CLIPBOARDUPDATE = 0x031D;
         private const string BASE_TITLE = "Certificate Viewer";
         private const string UNSPECIFIED = "(Unspecified)";
+        private const uint MAX_PASSWORD_ATTEMPTS = 8;
 
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> EXT_KEY_USAGE = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_ExtKeyUsage);
@@ -210,7 +212,7 @@ namespace CertViewer.Dialogs
             m_clipbrdTimer.Stop();
             try
             {
-                if (EnableMonitorClipboard && (!OwnedWindows.OfType<PasswordDialog>().Any()) && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
+                if (EnableMonitorClipboard && (!OwnedWindows.OfType<UserInputDialog>().Any()) && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
                 {
                     ParseCertificateFromClipboard();
                 }
@@ -827,7 +829,7 @@ namespace CertViewer.Dialogs
                         return cert;
                     }
                 }
-                catch
+                catch (Exception e) when ((e is IOException) || (e is CertificateException))
                 {
                     if (IsNotNull(cert = ReadPkcs12File(data, busy)))
                     {
@@ -850,9 +852,9 @@ namespace CertViewer.Dialogs
                     using (MemoryStream stream = new MemoryStream(data, false))
                     {
                         pkcs12Store.Load(stream, IsNotEmpty(password) ? password.ToCharArray() : Array.Empty<char>());
-                        X509CertificateEntry entry;
-                        foreach (string alias in pkcs12Store.Aliases)
+                        foreach (string alias in SelectCertificate(pkcs12Store.Aliases, busy))
                         {
+                            X509CertificateEntry entry;
                             if (IsNotNull(entry = pkcs12Store.GetCertificate(alias)))
                             {
                                 X509Certificate cert;
@@ -864,24 +866,95 @@ namespace CertViewer.Dialogs
                         }
                     }
                 }
-                catch (Exception e)
+                catch (IOException e) when (e.Message.IndexOf("wrong password", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    const uint MAX_PASSWORD_ATTEMPTS = 8;
-                    if ((e is IOException ex) && (ex.Message.IndexOf("wrong password", StringComparison.OrdinalIgnoreCase) >= 0))
+                    if (retry < MAX_PASSWORD_ATTEMPTS)
                     {
-                        if (retry < MAX_PASSWORD_ATTEMPTS)
+                        PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "PKCS#12 Password" };
+                        if (dialog.ShowDialog(busy).GetValueOrDefault(false))
                         {
-                            PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "PKCS#12 Password" };
-                            if (dialog.ShowDialog(busy).GetValueOrDefault(false))
-                            {
-                                return ReadPkcs12File(data, busy, dialog.Password, retry + 1U);
-                            }
+                            return ReadPkcs12File(data, busy, dialog.Password, retry + 1U);
                         }
-                        throw;
+                    }
+                    else
+                    {
+                        throw; /*too many attempts*/
                     }
                 }
+                catch { }
             }
-            return null;
+            return ReadJksFile(data, busy);
+        }
+
+        private X509Certificate ReadJksFile(byte[] data, OverrideCursor busy, string password = null, uint retry = 0)
+        {
+            if (IsNotEmpty(data))
+            {
+                try
+                {
+                    JksStore jksStore = new JksStore();
+                    bool probeResult;
+                    using (MemoryStream stream = new MemoryStream(data, false))
+                    {
+                        probeResult = jksStore.Probe(stream);
+                    }
+                    if (probeResult)
+                    {
+                        using (MemoryStream stream = new MemoryStream(data, false))
+                        {
+                            jksStore.Load(stream, IsNotEmpty(password) ? password.ToCharArray() : Array.Empty<char>());
+                            foreach (string alias in SelectCertificate(jksStore.Aliases, busy))
+                            {
+                                X509Certificate cert;
+                                if (IsNotNull(cert = jksStore.GetCertificate(alias)))
+                                {
+                                    return cert;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (IOException e) when (e.Message.IndexOf("password incorrect", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    if (retry < MAX_PASSWORD_ATTEMPTS)
+                    {
+                        PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "JKS Password" };
+                        if (dialog.ShowDialog(busy).GetValueOrDefault(false))
+                        {
+                            return ReadJksFile(data, busy, dialog.Password, retry + 1U);
+                        }
+                    }
+                    else
+                    {
+                        throw; /*too many attempts*/
+                    }
+                }
+                //catch { }
+            }
+            return null; /*finally giving up*/
+        }
+
+        private IEnumerable<string> SelectCertificate(IEnumerable<string> aliases, OverrideCursor busy)
+        {
+            if (IsNotEmpty(aliases))
+            {
+                if (aliases.Skip(1).Any())
+                {
+                    ItemSelection dialog = new ItemSelection(aliases) { Owner = this, Title = "Choose Certificate" };
+                    if (dialog.ShowDialog(busy).GetValueOrDefault(false))
+                    {
+                        string alias;
+                        if (IsNotEmpty(alias = dialog.SelectedItem))
+                        {
+                            yield return alias;
+                        }
+                    }
+                }
+                else
+                {
+                    yield return aliases.First();
+                }
+            }
         }
 
         private void ShowDistinguishedNameDetails(X509Name name, string title)

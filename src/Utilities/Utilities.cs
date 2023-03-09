@@ -377,6 +377,9 @@ namespace CertViewer.Utilities
         public static bool IsNotEmpty<T>(IList<T> list) => (!ReferenceEquals(list, null)) && (list.Count > 0);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty(CollectionView view) => (!ReferenceEquals(view, null)) && (view.Count > 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNotEmpty<T>(IEnumerable<T> items) => (!ReferenceEquals(items, null)) && items.Any();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -15,9 +15,9 @@
 
 ## Usage
 
-In order to display an X.509 certificate, simply ***drop*** a certificate file in the *binary* (DER) or the *Base64-encoded* (PEM) format, or a PKCS#12 (PFX) archive onto the CertViewer window. Alternatively, you can ***copy*** a certificate in the PEM format to the clipboard. It is also possible to pass a certificate file to CertViewer via command-line.
+In order to display an X.509 certificate, simply ***drop*** a certificate file onto the CertViewer window. Alternatively, you can ***copy*** a certificate to the clipboard &ndash; by default, CertViewer continuously monitors the clipboard for "displayable" certificates. Last, but not least, it is possible to pass certificates to CertViewer via the *command-line*.
 
-**Note:** By default, CertViewer continuously monitors the clipboard for "viewable" certificates in the PEM format.
+CertViewer currently supports certificates in the [*binary* (DER)](https://en.wikipedia.org/wiki/X.690) and the [*Base64-encoded* (PEM)](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) format, as well as key-stores in the [PKCS #12 (PFX)](https://en.wikipedia.org/wiki/PKCS_12) and the [JKS (Java KeyStore)](https://en.wikipedia.org/wiki/Java_KeyStore) format, including password-protected files.
 
 ## Prerequisites
 

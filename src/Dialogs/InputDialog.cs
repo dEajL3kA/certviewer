@@ -15,12 +15,12 @@
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
  * OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-namespace CertViewer.Properties
+using System;
+
+namespace CertViewer.Dialogs
 {
-    internal class MyVersion
+    public interface UserInputDialog
     {
-        public const string VERSION_MAJOR = "1";
-        public const string VERSION_MINOR = "2";
-        public const string VERSION_PATCH = "3";
+        bool? ShowDialog(IDisposable busy);
     }
 }
