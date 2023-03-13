@@ -20,11 +20,8 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Threading;
 
 using static CertViewer.Utilities.Utilities;
-using static CertViewer.Utilities.NativeMethods;
 
 namespace CertViewer.Dialogs
 {

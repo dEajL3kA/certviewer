@@ -39,6 +39,7 @@ using static Farmhash.Sharp.Farmhash;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Utilities.Collections;
+using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.Utilities.Encoders;
 
 using static CertViewer.Utilities.NativeMethods;
@@ -47,6 +48,10 @@ using static CertViewer.Utilities.Utilities;
 namespace CertViewer.Utilities
 {
     public enum DigestAlgo { MD5, RIPEMD128, RIPEMD160, RIPEMD256, SHA1, BLAKE2_160, BLAKE2_256, BLAKE3, SHA224, SHA256, SHA3_224, SHA3_256 }
+
+    // ==================================================================
+    // Untility Methods
+    // ==================================================================
 
     static class Utilities
     {
@@ -193,38 +198,31 @@ namespace CertViewer.Utilities
             return str;
         }
 
-        public static byte[] ReadFileContents(string filePath, int maxLength)
+        public static byte[] ReadFileContents(string fileName, int maxLength)
         {
-            byte[] buffer = Array.Empty<byte>();
-            try
+            if (IsNotEmpty(fileName) && (maxLength > 0))
             {
-                using (FileStream stream = TryOpenFile(filePath, FileMode.Open, FileAccess.Read))
+                try
                 {
-                    int length = (int)Math.Min(stream.Length, maxLength);
-                    if (length > 0)
+                    using (FileStream stream = TryOpenFile(fileName, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
-                        buffer = new byte[length];
-                        int count, offset = 0;
-                        while (offset < length)
+                        byte[] buffer = new byte[(int)Math.Min(stream.Length, maxLength)];
+                        if (Streams.ReadFully(stream, buffer) >= buffer.Length)
                         {
-                            if ((count = stream.Read(buffer, offset, length - offset)) < 1)
-                            {
-                                return CopySubArray(buffer, offset);
-                            }
-                            offset += count;
+                            return buffer;
                         }
                     }
                 }
+                catch { }
             }
-            catch { }
-            return buffer;
+            return Array.Empty<byte>();
         }
 
-        public static FileStream TryOpenFile(string filePath, FileMode mode, FileAccess access)
+        public static FileStream TryOpenFile(string filePath, FileMode mode, FileAccess access, FileShare share)
         {
             return DoWithRetry(8, () =>
             {
-                return File.Open(filePath, mode, access);
+                return File.Open(filePath, mode, access, share);
             });
         }
 
@@ -294,6 +292,14 @@ namespace CertViewer.Utilities
                 }
             }
             return newBuffer;
+        }
+
+        public static void Rewind(this Stream stream)
+        {
+            if (IsNotNull(stream))
+            {
+                stream.Seek(0L, SeekOrigin.Begin);
+            }
         }
 
         public static void GetSettingsValue(KeyValueConfigurationCollection settings, string name, Action<string> handler)
@@ -409,6 +415,9 @@ namespace CertViewer.Utilities
         public static bool IsNotEmpty(string text) => !string.IsNullOrEmpty(text);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty(SecureString text) => (!ReferenceEquals(text, null)) && (text.Length > 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNotEmpty<T>(IList<T> list) => (!ReferenceEquals(list, null)) && (list.Count > 0);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -420,6 +429,199 @@ namespace CertViewer.Utilities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string TrimToEmpty(string text) => (!ReferenceEquals(text, null)) ? text.Trim() : string.Empty;
     }
+
+    // ==================================================================
+    // Handle Wrapper
+    // ==================================================================
+
+    class HandleWrapper : IDisposable
+    {
+        public HandleRef Handle { get; private set; }
+
+        public HandleWrapper(IntPtr hWnd)
+        {
+            Handle = new HandleRef(this, hWnd);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void Dispose() { }
+    }
+
+    // ==================================================================
+    // Override Cursor
+    // ==================================================================
+
+    class OverrideCursor : IDisposable
+    {
+        private static readonly object m_lock = new object();
+        private Once m_restored;
+        private readonly Cursor m_previous;
+
+        public OverrideCursor(Cursor cursor)
+        {
+            lock(m_lock)
+            {
+                m_previous = Mouse.OverrideCursor;
+                Mouse.OverrideCursor = cursor;
+            }
+        }
+
+        ~OverrideCursor() => Restore();
+        
+        public void Dispose()
+        {
+            Restore();
+            GC.SuppressFinalize(this);
+        }
+
+        public void Restore()
+        {
+            if (m_restored.Execute())
+            {
+                Mouse.OverrideCursor = m_previous;
+            }
+        }
+    }
+
+    // ==================================================================
+    // Hash Code
+    // ==================================================================
+
+    public readonly struct HashCode
+    {
+        public static readonly HashCode Empty = Compute(string.Empty);
+
+        public readonly ulong h;
+
+        public HashCode(ulong h) => this.h = h;
+
+        public static HashCode Compute(string text) => IsNotNull(text) ? new HashCode(Hash64(text)) : Compute(string.Empty);
+
+        public bool Equals(HashCode other) => (h == other.h);
+
+        public override bool Equals(object obj) => (obj is HashCode hashCode) && Equals(hashCode);
+
+        public override int GetHashCode() => h.GetHashCode();
+    }
+
+    // ==================================================================
+    // Uncloseable Stream
+    // ==================================================================
+
+    /// <summary>Workaround for Asn1InputStream et al. that unconditionally close the 'inner' stream!</summary>
+    class UnclosableStream : FilterStream
+    {
+        public UnclosableStream(Stream stream) : base(stream) { }
+
+        public override void Close() { }
+
+        protected override void Dispose(bool _) { }
+    }
+
+    // ==================================================================
+    // Password Buffer
+    // ==================================================================
+
+    class PasswordBuffer : IDisposable
+    {
+        private Once m_freed;
+        private readonly char[] m_buffer = null;
+        private readonly GCHandle m_handle;
+
+        public char[] Buffer { get => IsNotNull(m_buffer) ? m_buffer : Array.Empty<char>(); }
+
+        public PasswordBuffer(SecureString text)
+        {
+            if (IsNotEmpty(text))
+            {
+                IntPtr temp = IntPtr.Zero;
+                try
+                {
+                    if ((temp = Marshal.SecureStringToBSTR(text)) != IntPtr.Zero)
+                    {
+                        m_handle = GCHandle.Alloc(m_buffer = new char[text.Length], GCHandleType.Pinned);
+                        Marshal.Copy(temp, m_buffer, 0, Buffer.Length);
+                    }
+                    else
+                    {
+                        throw new SystemException("Failed to decrypt the SecureString!");
+                    }
+                }
+                finally
+                {
+                    Marshal.ZeroFreeBSTR(temp);
+                }
+            }
+        }
+
+        ~PasswordBuffer() => Free();
+
+        public void Dispose()
+        {
+            Free();
+            GC.SuppressFinalize(this);
+        }
+
+        protected void Free()
+        {
+            if (m_freed.Execute() && IsNotNull(m_buffer))
+            {
+                try
+                {
+                    int byteCount = m_buffer.Length * Marshal.SizeOf<char>();
+                    for (int index = 0; index < byteCount; ++index)
+                    {
+                        Marshal.WriteByte(m_handle.AddrOfPinnedObject(), index, 0);
+                    }
+                }
+                finally
+                {
+                    m_handle.Free();
+                }
+            }
+        }
+    }
+
+    // ==================================================================
+    // Font Size Converter
+    // ==================================================================
+
+    class FontSizeConverter : IValueConverter
+    {
+        public double Ratio { get; set; } = 1.0;
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is double originalFontSize)
+            {
+                return originalFontSize * Ratio;
+            }
+            return 1.0;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter,CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // ==================================================================
+    // Once Flag
+    // ==================================================================
+
+    public struct Once
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Execute() => Interlocked.CompareExchange(ref m_completed, 1, 0) == 0;
+
+        private int m_completed;
+
+        public bool Done => m_completed != 0;
+    }
+
+    // ==================================================================
+    // Native Methods
+    // ==================================================================
 
     [SuppressUnmanagedCodeSecurity]
     static class NativeMethods
@@ -457,73 +659,5 @@ namespace CertViewer.Utilities
 
         [DllImport("kernel32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         public static extern ulong GetTickCount64();
-    }
-
-    class HandleWrapper : IDisposable
-    {
-        public HandleRef Handle { get; private set; }
-
-        public HandleWrapper(IntPtr hWnd)
-        {
-            Handle = new HandleRef(this, hWnd);
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public void Dispose() { }
-    }
-
-    class OverrideCursor : IDisposable
-    {
-        private volatile bool m_disposed = false;
-
-        public OverrideCursor()
-        {
-            Mouse.OverrideCursor = Cursors.Wait;
-        }
-
-        public void Dispose()
-        {
-            if (!m_disposed)
-            {
-                m_disposed = true;
-                Mouse.OverrideCursor = null;
-            }
-        }
-    }
-
-    public readonly struct HashCode
-    {
-        public static readonly HashCode Empty = Compute(string.Empty);
-
-        public readonly ulong h;
-
-        public HashCode(ulong h) => this.h = h;
-
-        public static HashCode Compute(string text) => IsNotNull(text) ? new HashCode(Hash64(text)) : Compute(string.Empty);
-
-        public bool Equals(HashCode other) => (h == other.h);
-
-        public override bool Equals(object obj) => (obj is HashCode hashCode) && Equals(hashCode);
-
-        public override int GetHashCode() => h.GetHashCode();
-    }
-
-    class FontSizeConverter : IValueConverter
-    {
-        public double Ratio { get; set; } = 1.0;
-
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is double originalFontSize)
-            {
-                return originalFontSize * Ratio;
-            }
-            return 1.0;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter,CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -46,12 +47,12 @@ using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.Utilities.Collections;
+using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.Utilities.IO.Pem;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
 
 using CertViewer.Utilities;
-
 using static CertViewer.Utilities.NativeMethods;
 using static CertViewer.Utilities.Utilities;
 
@@ -59,12 +60,14 @@ namespace CertViewer.Dialogs
 {
     public partial class MainWindow : WindowEx
     {
-        private const int MAX_LENGTH = 128 * 1024 * 1024;
+        private const int MAX_LENGTH = 32 * 1024 * 1024;
         private const int WM_CLIPBOARDUPDATE = 0x031D;
         private const string BASE_TITLE = "Certificate Viewer";
         private const string UNSPECIFIED = "(Unspecified)";
         private const uint MAX_PASSWORD_ATTEMPTS = 8;
 
+        private static readonly IList<string> SUPPORTED_FILE_TYPES = CollectionUtilities.ReadOnly(new string[] { "pem", "der", "cer", "crt", "p12", "pfx", "jks" });
+        private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Select(ext => $"*.{ext}"))}|All Files|*.*");
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> EXT_KEY_USAGE = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_ExtKeyUsage);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> AUTH_INFO_ACCESS = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_AuthInfoAccess);
@@ -197,7 +200,7 @@ namespace CertViewer.Dialogs
             {
                 if (m_tabInitialized.Add(item))
                 {
-                    using (OverrideCursor busy = new OverrideCursor())
+                    using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                     {
                         InitializeTab(GetValueOrDefault(m_tabs, item, int.MaxValue));
                     }
@@ -493,8 +496,7 @@ namespace CertViewer.Dialogs
         {
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount == 2))
             {
-                OpenFileDialog openFileDialog = new OpenFileDialog();
-                openFileDialog.Filter = "Certificate Files|*.pem;*.der;*.cer;*.crt;*.p12;*.pfx|All Files|*.*";
+                OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = FILE_OPEN_FILTER.Value };
                 if (openFileDialog.ShowDialog(this).GetValueOrDefault(false))
                 {
                     ParseCertificateFile(openFileDialog.FileName);
@@ -613,7 +615,7 @@ namespace CertViewer.Dialogs
 
         private bool ParseCertificateFromClipboard()
         {
-            using (OverrideCursor busy = new OverrideCursor())
+            using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
             {
                 HideErrorText();
                 try
@@ -627,15 +629,13 @@ namespace CertViewer.Dialogs
                         {
                             m_clipbrdHash = currentHash;
                             m_clipbrdTick = ticks;
-                            Match match = PEM_CERTIFICATE.Value.Match(text);
-                            while (match.Success)
+                            foreach (string pemCertificateData in FindPemEncodedCertificate(text))
                             {
                                 Title = $"Clipboard \u2013 {BASE_TITLE}";
-                                if (ParseCertificateData(match.Groups[1].Value, busy))
+                                if (ParseCertificateData(pemCertificateData, busy))
                                 {
                                     return true;
                                 }
-                                match = match.NextMatch();
                             }
                         }
                     }
@@ -652,7 +652,7 @@ namespace CertViewer.Dialogs
 
         private bool ParseCertificateFile(params string[] fileNames)
         {
-            using (OverrideCursor busy = new OverrideCursor())
+            using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
             {
                 HideErrorText();
                 if (IsNotEmpty(fileNames))
@@ -661,23 +661,24 @@ namespace CertViewer.Dialogs
                     {
                         foreach (string fileName in fileNames)
                         {
-                            byte[] data = ReadFileContents(fileName, MAX_LENGTH);
-                            if (IsNotEmpty(data))
+                            byte[] content;
+                            if (IsNotEmpty(content = ReadFileContents(fileName, MAX_LENGTH)))
                             {
                                 Title = $"{GetBaseName(fileName)} \u2013 {BASE_TITLE}";
                                 m_clipbrdHash = HashCode.Empty;
-                                Match match = PEM_CERTIFICATE.Value.Match(Encoding.UTF8.GetString(data));
-                                while (match.Success)
+                                foreach (string pemCertificateData in FindPemEncodedCertificate(Encoding.UTF8.GetString(content)))
                                 {
-                                    if (ParseCertificateData(match.Groups[1].Value, busy))
+                                    if (ParseCertificateData(pemCertificateData, busy))
                                     {
                                         return true;
                                     }
-                                    match = match.NextMatch();
                                 }
-                                if (ParseCertificateData(data, busy))
+                                using (MemoryStream stream = new MemoryStream(content, false))
                                 {
-                                    return true;
+                                    if (ParseCertificateData(stream, busy))
+                                    {
+                                        return true;
+                                    }
                                 }
                             }
                         }
@@ -702,7 +703,11 @@ namespace CertViewer.Dialogs
                     base64text = INVALID_BASE64_CHARS.Value.Replace(base64text, string.Empty);
                     if (base64text.Length > 0)
                     {
-                        return ParseCertificateData(Convert.FromBase64String(AddPadding(base64text)), busy);
+                        byte[] data = Convert.FromBase64String(AddPadding(base64text));
+                        using (MemoryStream stream = new MemoryStream(data, false))
+                        {
+                            return ParseCertificateData(stream, busy);
+                        }
                     }
                 }
             }
@@ -715,12 +720,12 @@ namespace CertViewer.Dialogs
             return false;
         }
 
-        private bool ParseCertificateData(byte[] data, OverrideCursor busy)
+        private bool ParseCertificateData(Stream stream, OverrideCursor busy)
         {
             bool success = false;
             try
             {
-                X509Certificate cert = ReadCertificateFile(data, busy);
+                X509Certificate cert = ReadCertificateFile(stream, busy);
                 m_tabInitialized.Clear();
                 if (success = IsNotNull(Certificate = cert))
                 {
@@ -815,41 +820,61 @@ namespace CertViewer.Dialogs
             }
         }
 
-        private X509Certificate ReadCertificateFile(byte[] data, OverrideCursor busy)
+        private X509Certificate ReadCertificateFile(Stream stream, OverrideCursor busy)
         {
-            if (IsNotEmpty(data))
+            if (IsNotNull(stream))
             {
-                X509Certificate cert;
-                try
+                using (UnclosableStream unclosable = new UnclosableStream(stream))
                 {
-                    if (IsNotNull(cert = new X509CertificateParser().ReadCertificate(data)))
+                    X509Certificate cert;
+                    try
                     {
-                        return cert;
+                        unclosable.Rewind();
+                        if (IsNotNull(cert = new X509CertificateParser().ReadCertificate(unclosable)))
+                        {
+                            return cert;
+                        }
                     }
-                }
-                catch (Exception e) when ((e is IOException) || (e is CertificateException))
-                {
-                    if (IsNotNull(cert = ReadPkcs12File(data, busy)))
+                    catch (Exception e) when ((e is IOException) || (e is CertificateException))
                     {
-                        return cert;
+                        if (IsNotNull(cert = LoadKeyStoreFile(unclosable, busy)))
+                        {
+                            return cert;
+                        }
+                        throw;
                     }
-                    throw;
+                    return LoadKeyStoreFile(unclosable, busy);
                 }
-                return ReadPkcs12File(data, busy);
             }
             return null;
         }
 
-        private X509Certificate ReadPkcs12File(byte[] data, OverrideCursor busy, string password = null, uint retry = 0)
+        private X509Certificate LoadKeyStoreFile(Stream stream, OverrideCursor busy)
         {
-            if (IsNotEmpty(data))
+            X509Certificate cert;
+            if (IsPossibleP12File(stream) && IsNotNull(cert = ReadP12KeyStore(stream, busy)))
+            {
+                return cert;
+            }
+            if (IsPossibleJksFile(stream) && IsNotNull(cert = ReadJksKeyStore(stream, busy)))
+            {
+                return cert;
+            }
+            return null; /*giving up!*/
+        }
+
+        private X509Certificate ReadP12KeyStore(Stream stream, OverrideCursor busy, SecureString password = null, uint retry = 0)
+        {
+            if (IsNotNull(stream))
             {
                 try
                 {
-                    Pkcs12Store pkcs12Store = new Pkcs12StoreBuilder().Build();
-                    using (MemoryStream stream = new MemoryStream(data, false))
+                    stream.Rewind();
+                    using (PasswordBuffer passwordBuffer = new PasswordBuffer(password))
                     {
-                        pkcs12Store.Load(stream, IsNotEmpty(password) ? password.ToCharArray() : Array.Empty<char>());
+                        Pkcs12Store pkcs12Store = new Pkcs12StoreBuilder().Build();
+                        pkcs12Store.Load(stream, passwordBuffer.Buffer);
+                        passwordBuffer.Dispose();
                         foreach (string alias in SelectCertificate(pkcs12Store.Aliases, busy))
                         {
                             X509CertificateEntry entry;
@@ -871,7 +896,10 @@ namespace CertViewer.Dialogs
                         PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "PKCS#12 Password" };
                         if (dialog.ShowDialog(busy).GetValueOrDefault(false))
                         {
-                            return ReadPkcs12File(data, busy, dialog.Password, retry + 1U);
+                            using (SecureString userProvidedPassword = dialog.Password)
+                            {
+                                return ReadP12KeyStore(stream, busy, userProvidedPassword, retry + 1U);
+                            }
                         }
                     }
                     else
@@ -881,33 +909,27 @@ namespace CertViewer.Dialogs
                 }
                 catch { }
             }
-            return ReadJksFile(data, busy);
+            return null;
         }
 
-        private X509Certificate ReadJksFile(byte[] data, OverrideCursor busy, string password = null, uint retry = 0)
+        private X509Certificate ReadJksKeyStore(Stream stream, OverrideCursor busy, SecureString password = null, uint retry = 0)
         {
-            if (IsNotEmpty(data))
+            if (IsNotNull(stream))
             {
                 try
                 {
-                    JksStore jksStore = new JksStore();
-                    bool probeResult;
-                    using (MemoryStream stream = new MemoryStream(data, false))
+                    stream.Rewind();
+                    using (PasswordBuffer passwordBuffer = new PasswordBuffer(password))
                     {
-                        probeResult = jksStore.Probe(stream);
-                    }
-                    if (probeResult)
-                    {
-                        using (MemoryStream stream = new MemoryStream(data, false))
+                        JksStore jksStore = new JksStore();
+                        jksStore.Load(stream, passwordBuffer.Buffer);
+                        passwordBuffer.Dispose();
+                        foreach (string alias in SelectCertificate(jksStore.Aliases, busy))
                         {
-                            jksStore.Load(stream, IsNotEmpty(password) ? password.ToCharArray() : Array.Empty<char>());
-                            foreach (string alias in SelectCertificate(jksStore.Aliases, busy))
+                            X509Certificate cert;
+                            if (IsNotNull(cert = jksStore.GetCertificate(alias)))
                             {
-                                X509Certificate cert;
-                                if (IsNotNull(cert = jksStore.GetCertificate(alias)))
-                                {
-                                    return cert;
-                                }
+                                return cert;
                             }
                         }
                     }
@@ -919,7 +941,10 @@ namespace CertViewer.Dialogs
                         PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "JKS Password" };
                         if (dialog.ShowDialog(busy).GetValueOrDefault(false))
                         {
-                            return ReadJksFile(data, busy, dialog.Password, retry + 1U);
+                            using (SecureString userProvidedPassword = dialog.Password)
+                            {
+                                return ReadJksKeyStore(stream, busy, userProvidedPassword, retry + 1U);
+                            }
                         }
                     }
                     else
@@ -927,9 +952,9 @@ namespace CertViewer.Dialogs
                         throw; /*too many attempts*/
                     }
                 }
-                //catch { }
+                catch { }
             }
-            return null; /*finally giving up*/
+            return null;
         }
 
         private IEnumerable<string> SelectCertificate(IEnumerable<string> aliases, OverrideCursor busy)
@@ -959,7 +984,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(name) && IsNotEmpty(title))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     IList<DerObjectIdentifier> oidList = name.GetOidList();
                     IList<string> valList = name.GetValueList();
@@ -982,7 +1007,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(asymmetricKeyParameter) && IsNotNull(subjectPublicKeyInfo))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     List<KeyValuePair<string, string>> items = new List<KeyValuePair<string, string>>(8);
                     try
@@ -1048,7 +1073,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotEmpty(sigAlgOid) && IsNotEmpty(sigAlgName) && IsNotEmpty(signature))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     List<KeyValuePair<string, string>> items = new List<KeyValuePair<string, string>>(8);
                     try
@@ -1072,7 +1097,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(keyUsage))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     IEnumerable<KeyValuePair<string, string>> items = keyUsage.Select((value, index) => value ? DecodeKeyUsage(index) : string.Empty)
                         .Where(item => IsNotEmpty(item))
@@ -1090,7 +1115,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(extKeyUsage))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     IDictionary<DerObjectIdentifier, string> lookup = EXT_KEY_USAGE.Value;
                     IEnumerable<KeyValuePair<string, string>> items = extKeyUsage.Select(oid => GetValueOrDefault(lookup, oid, oid.Id))
@@ -1108,7 +1133,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(subjectAlternativeNames))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     IEnumerable<KeyValuePair<string, string>> items = subjectAlternativeNames.Where(item => item.Count >= 2)
                         .Select(item => new KeyValuePair<string, string>(DecodeGeneralNameType(item[0] as int?), item[1] as string))
@@ -1126,7 +1151,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(authorityInformationAccess))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     IDictionary<DerObjectIdentifier, string> method = AUTH_INFO_ACCESS.Value;
                     IEnumerable<KeyValuePair<string, string>> items = authorityInformationAccess.GetAccessDescriptions()
@@ -1147,7 +1172,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(certificatePolicies))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     IEnumerable<KeyValuePair<string, string>> items = certificatePolicies.GetPolicyInformation()
                         .SelectMany((info, index) => DecodePolicyInformation(info).Select(item => Tuple.Create(index, item.Item1, item.Item2)))
@@ -1165,7 +1190,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(crlDistPoints))
             {
-                using (OverrideCursor busy = new OverrideCursor())
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
                     IEnumerable<KeyValuePair<string, string>> items = crlDistPoints.GetDistributionPoints()
                         .Select(point => point.DistributionPointName)
@@ -1342,6 +1367,55 @@ namespace CertViewer.Dialogs
                 AddIfNotExists(builder, entry.Key, entry.Value);
             }
             return new ReadOnlyDictionary<ECCurve, string>(builder);
+        }
+
+        private static IEnumerable<string> FindPemEncodedCertificate(string pemText)
+        {
+            if (IsNotEmpty(pemText))
+            {
+                Match match = PEM_CERTIFICATE.Value.Match(pemText);
+                while (match.Success)
+                {
+                    yield return match.Groups[1].Value;
+                    match = match.NextMatch();
+                }
+            }
+        }
+
+        private static bool IsPossibleP12File(Stream stream)
+        {
+            try
+            {
+                stream.Rewind();
+                using (Asn1InputStream input = new Asn1InputStream(stream))
+                {
+                    if (input.ReadObject() is Asn1Sequence sequence)
+                    {
+                        if ((sequence.Count > 0) && (sequence[0] is DerInteger versionNumber))
+                        {
+                            return versionNumber.IntValueExact == 3;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static bool IsPossibleJksFile(Stream stream)
+        {
+            try
+            {
+                stream.Rewind();
+                using (BinaryReader reader = new BinaryReader(stream, Encoding.UTF8, true))
+                {
+                    ulong headerValue = BinaryReaders.ReadUInt64BigEndian(reader);
+                    const ulong MAGIC_NUMBER = 0xFEEDFEEDul << 32;
+                    return (headerValue >= MAGIC_NUMBER + 1U) && (headerValue <= MAGIC_NUMBER + 2U);
+                }
+            }
+            catch { }
+            return false;
         }
 
         private static string ParseKeyUsage(bool[] keyUsageFlags)
