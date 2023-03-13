@@ -15,12 +15,12 @@
     DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
     OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -->
-<Window x:Class="CertViewer.Dialogs.ItemSelection"
+<dialogs:WindowEx x:Class="CertViewer.Dialogs.ItemSelection"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:CertViewer.Dialogs"
+        xmlns:dialogs="clr-namespace:CertViewer.Dialogs"
         mc:Ignorable="d"
         Title="Items"
         SizeToContent="WidthAndHeight"
@@ -57,4 +57,4 @@
             </ListBox.ItemTemplate>
         </ListBox>
     </DockPanel>
-</Window>
+</dialogs:WindowEx>

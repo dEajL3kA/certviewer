@@ -23,6 +23,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Media;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -56,7 +57,7 @@ using static CertViewer.Utilities.Utilities;
 
 namespace CertViewer.Dialogs
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : WindowEx
     {
         private const int MAX_LENGTH = 128 * 1024 * 1024;
         private const int WM_CLIPBOARDUPDATE = 0x031D;
@@ -72,10 +73,8 @@ namespace CertViewer.Dialogs
         private static readonly Lazy<Regex> PEM_CERTIFICATE = new Lazy<Regex>(() => new Regex(@"-{3,}?\s*BEGIN\s+CERTIFICATE\s*-{3,}([\t\n\v\f\r\x20-\x7E]+?)-{3,}\s*END\s+CERTIFICATE\s*-{3,}?", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
         private static readonly Lazy<Regex> INVALID_BASE64_CHARS = new Lazy<Regex>(() => new Regex(@"[^A-Za-z0-9+/]+", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
 
-        private bool m_initialized = false;
         private HashCode m_clipbrdHash = HashCode.Empty;
         private ulong m_clipbrdTick = ulong.MaxValue;
-        private IntPtr m_hWndSelf = IntPtr.Zero;
 
         public X509Certificate Certificate { get; private set; } = null;
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
@@ -97,7 +96,8 @@ namespace CertViewer.Dialogs
             m_tabInitialized = new HashSet<TabItem>();
             InitializeComponent();
             m_tabs = ItemsToDictionary<TabItem>(TabControl.Items);
-            m_clipbrdTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher);
+            m_clipbrdTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromMilliseconds(25) };
+            m_clipbrdTimer.Tick += OnClipboardChanged;
             ShowPlaceholder(true);
             LoadConfigurationSettings();
         }
@@ -106,51 +106,64 @@ namespace CertViewer.Dialogs
         // Event Handlers
         // ==================================================================
 
-        protected override void OnSourceInitialized(EventArgs e)
+        protected override void InitializeWnd(HwndSource source)
         {
-            base.OnSourceInitialized(e);
-            HwndSource source = PresentationSource.FromVisual(this) as HwndSource;
-            if (IsNotNull(source))
+            try
             {
-                source.AddHook(WndProc);
-                AddClipboardFormatListener(m_hWndSelf = source.Handle);
-                m_clipbrdTimer.Tick += OnClipboardChanged;
-                m_clipbrdTimer.Interval = TimeSpan.FromMilliseconds(25);
+                AddClipboardFormatListener(new HandleRef(this, source.Handle));
+            }
+            catch { }
+        }
+
+        protected override void InitializeGui(IntPtr hWnd)
+        {
+            MaxHeight = MinHeight = ActualHeight;
+            MinWidth = ActualWidth;
+            Checkbox_MonitorClipboard.IsChecked = EnableMonitorClipboard;
+            Checkbox_StayOnTop.IsChecked = Topmost;
+            InitializeContextMenu();
+            try
+            {
+                DisableMinimizeMaximizeButtons(hWnd, false);
+                BringWindowToFront(hWnd);
+            }
+            catch { }
+            if ((!ParseCliArguments()) && EnableMonitorClipboard)
+            {
+                ParseCertificateFromClipboard();
             }
         }
 
-        protected override void OnContentRendered(EventArgs e)
+        protected override IntPtr WndProc(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            base.OnContentRendered(e);
-            if (!m_initialized)
+            switch (msg)
             {
-                MaxHeight = MinHeight = ActualHeight;
-                MinWidth = ActualWidth;
-                Checkbox_MonitorClipboard.IsChecked = EnableMonitorClipboard;
-                Checkbox_StayOnTop.IsChecked = Topmost;
-                InitializeContextMenu();
-                if ((!ParseCliArguments()) && EnableMonitorClipboard)
-                {
-                    ParseCertificateFromClipboard();
-                }
-                m_initialized = true;
+                case WM_CLIPBOARDUPDATE:
+                    if (IsGuiInitialized && EnableMonitorClipboard)
+                    {
+                        Restart(m_clipbrdTimer);
+                    }
+                    handled = true;
+                    return IntPtr.Zero;
             }
+            return base.WndProc(hWnd, msg, wParam, lParam, ref handled);
         }
 
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
-            if (m_hWndSelf != IntPtr.Zero)
+            try
             {
-                RemoveClipboardFormatListener(m_hWndSelf);
+                RemoveClipboardFormatListener(new HandleRef(this, Hwnd));
             }
+            catch { }
         }
 
         private void Window_PreviewDragEnter(object sender, DragEventArgs e)
         {
             try
             {
-                e.Effects = (IsWindowEnabled(m_hWndSelf) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
+                e.Effects = (IsWindowEnabled(new HandleRef(this, Hwnd)) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
             }
             catch { }
             e.Handled = true;
@@ -165,7 +178,7 @@ namespace CertViewer.Dialogs
         {
             try
             {
-                if (IsWindowEnabled(m_hWndSelf))
+                if (IsWindowEnabled(new HandleRef(this, Hwnd)))
                 {
                     string[] droppedFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
                     if (IsNotNull(droppedFiles))
@@ -190,21 +203,6 @@ namespace CertViewer.Dialogs
                     }
                 }
             }
-        }
-
-        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-        {
-            switch (msg)
-            {
-                case WM_CLIPBOARDUPDATE:
-                    if (m_initialized && EnableMonitorClipboard)
-                    {
-                        Restart(m_clipbrdTimer);
-                    }
-                    handled = true;
-                    break;
-            }
-            return IntPtr.Zero;
         }
 
         private void OnClipboardChanged(object sender, EventArgs e)
@@ -753,7 +751,7 @@ namespace CertViewer.Dialogs
                     m_tabInitialized.Add(Tab_CertInfo);
                     TabControl.SelectedItem = Tab_CertInfo;
                     ShowPlaceholder(false);
-                    BringWindowToFront(m_hWndSelf);
+                    BringWindowToFront(Hwnd);
                 }
                 else
                 {

@@ -85,6 +85,7 @@
       <DependentUpon>ItemSelection.xaml</DependentUpon>
     </Compile>
     <Compile Include="Utilities\Utilities.cs" />
+    <Compile Include="Dialogs\WindowEx.cs" />
     <Page Include="Dialogs\AboutDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

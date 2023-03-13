@@ -45,7 +45,7 @@ namespace CertViewer
                 }
             }
             catch { }
-            Require(typeof(Asn1Encodable));
+            GC.KeepAlive(typeof(Asn1Encodable));
         }
 
         private static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args)
@@ -69,9 +69,6 @@ namespace CertViewer
             }
             return false;
         }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void Require(Type _) { }
 
         [DllImport("kernel32.dll", ExactSpelling=true, CharSet=CharSet.Unicode, EntryPoint="FatalAppExitW")]
         [SuppressUnmanagedCodeSecurity]

@@ -23,14 +23,11 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 
 using static CertViewer.Utilities.Utilities;
-using static CertViewer.Utilities.NativeMethods;
 
 namespace CertViewer.Dialogs
 {
-    public partial class PasswordDialog : Window, UserInputDialog
+    public partial class PasswordDialog : WindowEx, UserInputDialog
     {
-        private bool m_initialized = false;
-
         // ==================================================================
         // Constructor
         // ==================================================================
@@ -44,6 +41,7 @@ namespace CertViewer.Dialogs
                 PasswordBox.Password = password;
                 PasswordBox.SelectAll();
             }
+            PasswordBox.PasswordChanged += PasswordBox_PasswordChanged;
         }
 
         public string Password
@@ -58,28 +56,18 @@ namespace CertViewer.Dialogs
         // Event Handlers
         // ==================================================================
 
-        protected override void OnContentRendered(EventArgs e)
+        protected override void InitializeGui(IntPtr hWnd)
         {
-            base.OnContentRendered(e);
-            if (!m_initialized)
+            MinHeight = MaxHeight = ActualHeight;
+            MinWidth = ActualWidth;
+            SizeToContent = SizeToContent.Manual;
+            try
             {
-                m_initialized = true;
-                MinHeight = MaxHeight = ActualHeight;
-                MinWidth = ActualWidth;
-                SizeToContent = SizeToContent.Manual;
-                try
-                {
-                    SetForegroundWindow(new WindowInteropHelper(this).Handle);
-                }
-                catch { }
-                PasswordBox.Focus();
+                DisableMinimizeMaximizeButtons(hWnd);
+                BringWindowToFront(hWnd);
             }
-        }
-
-        public bool? ShowDialog(IDisposable busy)
-        {
-            Dispatcher.InvokeAsync(() => busy.Dispose(), DispatcherPriority.Background);
-            return ShowDialog();
+            catch { }
+            PasswordBox.Focus();
         }
 
         private void Button_OK_Click(object sender, RoutedEventArgs e)
@@ -94,9 +82,14 @@ namespace CertViewer.Dialogs
             Close();
         }
 
+        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            Button_OK.IsEnabled = IsNotEmpty(PasswordBox.Password);
+        }
+
         private void PasswordBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            if ((e.Key == Key.Return) || (e.Key == Key.Enter))
+            if (((e.Key == Key.Return) || (e.Key == Key.Enter)) && Button_OK.IsEnabled)
             {
                 e.Handled = true;
                 Button_OK_Click(sender, e);

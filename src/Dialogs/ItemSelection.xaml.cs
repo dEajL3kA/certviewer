@@ -28,10 +28,8 @@ using static CertViewer.Utilities.NativeMethods;
 
 namespace CertViewer.Dialogs
 {
-    public partial class ItemSelection : Window, UserInputDialog
+    public partial class ItemSelection : WindowEx, UserInputDialog
     {
-        private bool m_initialized = false;
-
         // ==================================================================
         // Constructor
         // ==================================================================
@@ -61,28 +59,18 @@ namespace CertViewer.Dialogs
         // Event Handlers
         // ==================================================================
 
-        protected override void OnContentRendered(EventArgs e)
+        protected override void InitializeGui(IntPtr hWnd)
         {
-            base.OnContentRendered(e);
-            if (!m_initialized)
+            MinHeight = MaxHeight = ActualHeight;
+            MinWidth = MaxWidth = ActualWidth;
+            SizeToContent = SizeToContent.Manual;
+            try
             {
-                m_initialized = true;
-                MinHeight = MaxHeight = ActualHeight;
-                MinWidth = MaxWidth = ActualWidth;
-                SizeToContent = SizeToContent.Manual;
-                try
-                {
-                    SetForegroundWindow(new WindowInteropHelper(this).Handle);
-                }
-                catch { }
-                SelectFirstItem(ItemView);
+                DisableMinimizeMaximizeButtons(hWnd);
+                BringWindowToFront(hWnd);
             }
-        }
-
-        public bool? ShowDialog(IDisposable busy)
-        {
-            Dispatcher.InvokeAsync(() => busy.Dispose(), DispatcherPriority.Background);
-            return ShowDialog();
+            catch { }
+            SelectFirstItem(ItemView);
         }
 
         private void Button_OK_Click(object sender, RoutedEventArgs e)

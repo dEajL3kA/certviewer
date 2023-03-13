@@ -28,13 +28,12 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 
 using static CertViewer.Utilities.Utilities;
-using static CertViewer.Utilities.NativeMethods;
 
 namespace CertViewer.Dialogs
 {
-    public partial class DetailsView : Window
+    public partial class DetailsView : WindowEx
     {
-        private bool m_initialized = false, m_scrollbar = false, m_resizeEnabled = false;
+        private bool m_scrollbar = false, m_resizeEnabled = false;
 
         private readonly IDictionary<TabItem, int> m_tabs;
         private readonly ISet<TabItem> m_tabInitialized;
@@ -72,21 +71,17 @@ namespace CertViewer.Dialogs
         // Event Handlers
         // ==================================================================
 
-        protected override void OnContentRendered(EventArgs e)
+        protected override void InitializeGui(IntPtr hWnd)
         {
-            base.OnContentRendered(e);
-            if (!m_initialized)
-            {
-                m_initialized = true;
-                MinHeight = ActualHeight;
-                MinWidth = ActualWidth;
-                MaxWidth = ActualWidth;
-                MaxHeight = m_scrollbar ? double.PositiveInfinity : ActualHeight;
-                SizeToContent = SizeToContent.Manual;
-            }
+            MinHeight = ActualHeight;
+            MinWidth = ActualWidth;
+            MaxWidth = ActualWidth;
+            MaxHeight = m_scrollbar ? double.PositiveInfinity : ActualHeight;
+            SizeToContent = SizeToContent.Manual;
             try
             {
-                SetForegroundWindow(new WindowInteropHelper(this).Handle);
+                DisableMinimizeMaximizeButtons(hWnd);
+                BringWindowToFront(hWnd);
             }
             catch { }
             Keyboard.ClearFocus();
@@ -162,12 +157,6 @@ namespace CertViewer.Dialogs
                 }
             }
             catch { }
-        }
-
-        public bool? ShowDialog(IDisposable busy)
-        {
-            Dispatcher.InvokeAsync(() => busy.Dispose(), DispatcherPriority.Background);
-            return ShowDialog();
         }
 
         // ==================================================================

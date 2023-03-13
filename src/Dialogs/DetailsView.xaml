@@ -15,11 +15,12 @@
     DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
     OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -->
-<Window x:Class="CertViewer.Dialogs.DetailsView"
+<dialogs:WindowEx x:Class="CertViewer.Dialogs.DetailsView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:CertViewer.Dialogs"
         mc:Ignorable="d"
         Title="DNViewer"
         Height="200" Width="384" MinWidth="384" MaxHeight="768" MaxWidth="1280"
@@ -95,4 +96,4 @@
             </TabItem>
         </TabControl>
     </DockPanel>
-</Window>
+</dialogs:WindowEx>

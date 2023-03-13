@@ -78,14 +78,6 @@ namespace CertViewer.Utilities
             return CollectionUtilities.ReadOnly(items.OfType<T>().ToDictionary(item => item, item => index++));
         }
 
-        public static void BringWindowToFront(IntPtr? hwnd)
-        {
-            if (hwnd.HasValue)
-            {
-                SetForegroundWindow(hwnd.Value);
-            }
-        }
-
         public static Tuple<Version, Version, DateTime> GetVersionAndBuildDate()
         {
             try
@@ -345,15 +337,58 @@ namespace CertViewer.Utilities
             return defaultValue;
         }
 
+        public static void BringWindowToFront(IntPtr hWnd)
+        {
+            if (hWnd != IntPtr.Zero)
+            {
+                try
+                {
+                    using (HandleWrapper wrapper = new HandleWrapper(hWnd))
+                    {
+                        SetForegroundWindow(wrapper.Handle);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        public static void DisableMinimizeMaximizeButtons(IntPtr hWnd, bool disableMinimize = true)
+        {
+            if (hWnd != IntPtr.Zero)
+            {
+                try
+                {
+                    using (HandleWrapper wrapper = new HandleWrapper(hWnd))
+                    {
+                        const int GWL_STYLE = -16;
+                        int style;
+                        if ((style = GetWindowLong(wrapper.Handle, GWL_STYLE)) != 0)
+                        {
+                            const int WS_MAXIMIZEBOX = 0x10000, WS_MINIMIZEBOX = 0x20000;
+                            SetWindowLong(wrapper.Handle, GWL_STYLE, style & ~(disableMinimize ? WS_MAXIMIZEBOX | WS_MINIMIZEBOX : WS_MAXIMIZEBOX));
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+
         public static uint GetWindowProcessId(IntPtr hWnd)
         {
             if (hWnd != IntPtr.Zero)
             {
-                uint processId;
-                if (GetWindowThreadProcessId(hWnd, out processId) != 0U)
+                try
                 {
-                    return processId;
+                    using (HandleWrapper wrapper = new HandleWrapper(hWnd))
+                    {
+                        uint processId;
+                        if (GetWindowThreadProcessId(wrapper.Handle, out processId) != 0)
+                        {
+                            return processId;
+                        }
+                    }
                 }
+                catch { }
             }
             return 0U;
         }
@@ -389,33 +424,52 @@ namespace CertViewer.Utilities
     [SuppressUnmanagedCodeSecurity]
     static class NativeMethods
     {
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool AddClipboardFormatListener(IntPtr hWnd);
+        public static extern bool AddClipboardFormatListener(HandleRef hWnd);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool RemoveClipboardFormatListener(IntPtr hWnd);
+        public static extern bool RemoveClipboardFormatListener(HandleRef hWnd);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr GetClipboardOwner();
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+        public static extern uint GetWindowThreadProcessId(HandleRef hWnd, out uint processId);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool IsWindowEnabled(IntPtr hWnd);
+        public static extern bool IsWindowEnabled(HandleRef hWnd);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetForegroundWindow(IntPtr hWnd);
+        public static extern bool SetForegroundWindow(HandleRef hWnd);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode, EntryPoint = "GetWindowLongW")]
+        public static extern int GetWindowLong(HandleRef hWnd, int nIndex);
+
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Unicode, EntryPoint = "SetWindowLongW")]
+        public static extern int SetWindowLong(HandleRef hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("kernel32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         public static extern uint GetCurrentProcessId();
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        [DllImport("kernel32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         public static extern ulong GetTickCount64();
+    }
+
+    class HandleWrapper : IDisposable
+    {
+        public HandleRef Handle { get; private set; }
+
+        public HandleWrapper(IntPtr hWnd)
+        {
+            Handle = new HandleRef(this, hWnd);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void Dispose() { }
     }
 
     class OverrideCursor : IDisposable
