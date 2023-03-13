@@ -48,6 +48,10 @@ namespace CertViewer.Utilities
 {
     public enum DigestAlgo { MD5, RIPEMD128, RIPEMD160, RIPEMD256, SHA1, BLAKE2_160, BLAKE2_256, BLAKE3, SHA224, SHA256, SHA3_224, SHA3_256 }
 
+    // ==================================================================
+    // Untility Methods
+    // ==================================================================
+
     static class Utilities
     {
         private static readonly Lazy<Regex> CONTROL_CHARACTERS = new Lazy<Regex>(() => new Regex(@"[\u0000-\u001F\u007F]", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
@@ -409,6 +413,9 @@ namespace CertViewer.Utilities
         public static bool IsNotEmpty(string text) => !string.IsNullOrEmpty(text);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty(SecureString text) => (!ReferenceEquals(text, null)) && (text.Length > 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNotEmpty<T>(IList<T> list) => (!ReferenceEquals(list, null)) && (list.Count > 0);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -420,6 +427,185 @@ namespace CertViewer.Utilities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string TrimToEmpty(string text) => (!ReferenceEquals(text, null)) ? text.Trim() : string.Empty;
     }
+
+    // ==================================================================
+    // Handle Wrapper
+    // ==================================================================
+
+    class HandleWrapper : IDisposable
+    {
+        public HandleRef Handle { get; private set; }
+
+        public HandleWrapper(IntPtr hWnd)
+        {
+            Handle = new HandleRef(this, hWnd);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void Dispose() { }
+    }
+
+    // ==================================================================
+    // Override Cursor
+    // ==================================================================
+
+    class OverrideCursor : IDisposable
+    {
+        private static readonly object m_lock = new object();
+        private Once m_restored;
+        private readonly Cursor m_previous;
+
+        public OverrideCursor(Cursor cursor)
+        {
+            lock(m_lock)
+            {
+                m_previous = Mouse.OverrideCursor;
+                Mouse.OverrideCursor = cursor;
+            }
+        }
+
+        ~OverrideCursor() => Restore();
+        
+        public void Dispose()
+        {
+            Restore();
+            GC.SuppressFinalize(this);
+        }
+
+        public void Restore()
+        {
+            if (m_restored.Execute())
+            {
+                Mouse.OverrideCursor = m_previous;
+            }
+        }
+    }
+
+    // ==================================================================
+    // Hash Code
+    // ==================================================================
+
+    public readonly struct HashCode
+    {
+        public static readonly HashCode Empty = Compute(string.Empty);
+
+        public readonly ulong h;
+
+        public HashCode(ulong h) => this.h = h;
+
+        public static HashCode Compute(string text) => IsNotNull(text) ? new HashCode(Hash64(text)) : Compute(string.Empty);
+
+        public bool Equals(HashCode other) => (h == other.h);
+
+        public override bool Equals(object obj) => (obj is HashCode hashCode) && Equals(hashCode);
+
+        public override int GetHashCode() => h.GetHashCode();
+    }
+
+    // ==================================================================
+    // Password Buffer
+    // ==================================================================
+
+    class PasswordBuffer : IDisposable
+    {
+        private Once m_freed;
+        private readonly char[] m_buffer = null;
+        private readonly GCHandle m_handle;
+
+        public char[] Buffer { get => IsNotNull(m_buffer) ? m_buffer : Array.Empty<char>(); }
+
+        public PasswordBuffer(SecureString text)
+        {
+            if (IsNotEmpty(text))
+            {
+                IntPtr temp = IntPtr.Zero;
+                try
+                {
+                    if ((temp = Marshal.SecureStringToBSTR(text)) != IntPtr.Zero)
+                    {
+                        m_handle = GCHandle.Alloc(m_buffer = new char[text.Length], GCHandleType.Pinned);
+                        Marshal.Copy(temp, m_buffer, 0, Buffer.Length);
+                    }
+                    else
+                    {
+                        throw new SystemException("Failed to decrypt the SecureString!");
+                    }
+                }
+                finally
+                {
+                    Marshal.ZeroFreeBSTR(temp);
+                }
+            }
+        }
+
+        ~PasswordBuffer() => Free();
+
+        public void Dispose()
+        {
+            Free();
+            GC.SuppressFinalize(this);
+        }
+
+        protected void Free()
+        {
+            if (m_freed.Execute() && IsNotNull(m_buffer))
+            {
+                try
+                {
+                    int byteCount = m_buffer.Length * Marshal.SizeOf<char>();
+                    for (int index = 0; index < byteCount; ++index)
+                    {
+                        Marshal.WriteByte(m_handle.AddrOfPinnedObject(), index, 0);
+                    }
+                }
+                finally
+                {
+                    m_handle.Free();
+                }
+            }
+        }
+    }
+
+    // ==================================================================
+    // Font Size Converter
+    // ==================================================================
+
+    class FontSizeConverter : IValueConverter
+    {
+        public double Ratio { get; set; } = 1.0;
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is double originalFontSize)
+            {
+                return originalFontSize * Ratio;
+            }
+            return 1.0;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter,CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // ==================================================================
+    // Once Flag
+    // ==================================================================
+
+    public struct Once
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Execute() => Interlocked.CompareExchange(ref m_completed, 1, 0) == 0;
+
+        private int m_completed;
+
+        public bool Done => m_completed != 0;
+    }
+
+    // ==================================================================
+    // Native Methods
+    // ==================================================================
 
     [SuppressUnmanagedCodeSecurity]
     static class NativeMethods
@@ -457,73 +643,5 @@ namespace CertViewer.Utilities
 
         [DllImport("kernel32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
         public static extern ulong GetTickCount64();
-    }
-
-    class HandleWrapper : IDisposable
-    {
-        public HandleRef Handle { get; private set; }
-
-        public HandleWrapper(IntPtr hWnd)
-        {
-            Handle = new HandleRef(this, hWnd);
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public void Dispose() { }
-    }
-
-    class OverrideCursor : IDisposable
-    {
-        private volatile bool m_disposed = false;
-
-        public OverrideCursor()
-        {
-            Mouse.OverrideCursor = Cursors.Wait;
-        }
-
-        public void Dispose()
-        {
-            if (!m_disposed)
-            {
-                m_disposed = true;
-                Mouse.OverrideCursor = null;
-            }
-        }
-    }
-
-    public readonly struct HashCode
-    {
-        public static readonly HashCode Empty = Compute(string.Empty);
-
-        public readonly ulong h;
-
-        public HashCode(ulong h) => this.h = h;
-
-        public static HashCode Compute(string text) => IsNotNull(text) ? new HashCode(Hash64(text)) : Compute(string.Empty);
-
-        public bool Equals(HashCode other) => (h == other.h);
-
-        public override bool Equals(object obj) => (obj is HashCode hashCode) && Equals(hashCode);
-
-        public override int GetHashCode() => h.GetHashCode();
-    }
-
-    class FontSizeConverter : IValueConverter
-    {
-        public double Ratio { get; set; } = 1.0;
-
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is double originalFontSize)
-            {
-                return originalFontSize * Ratio;
-            }
-            return 1.0;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter,CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

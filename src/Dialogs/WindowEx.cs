@@ -16,11 +16,11 @@
  * OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 using System;
-using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
 
+using CertViewer.Utilities;
 using static CertViewer.Utilities.Utilities;
 
 namespace CertViewer.Dialogs
@@ -29,11 +29,11 @@ namespace CertViewer.Dialogs
     {
         protected IntPtr Hwnd { get; private set; } = IntPtr.Zero;
 
-        private int m_wndInitialized = 0;
-        private int m_guiInitialized = 0;
+        private Once m_wndInitialized;
+        private Once m_guiInitialized;
 
-        protected bool IsWndInitialized => m_wndInitialized != 0;
-        protected bool IsGuiInitialized => m_guiInitialized != 0;
+        protected bool IsWndInitialized => m_wndInitialized.Done;
+        protected bool IsGuiInitialized => m_guiInitialized.Done;
 
         // ==================================================================
         // Event Handlers
@@ -48,7 +48,7 @@ namespace CertViewer.Dialogs
                 {
                     Hwnd = source.Handle;
                     source.AddHook(WndProc);
-                    if (Interlocked.CompareExchange(ref m_wndInitialized, 1, 0) == 0)
+                    if (m_wndInitialized.Execute())
                     {
                         InitializeWnd(source);
                     }
@@ -60,7 +60,7 @@ namespace CertViewer.Dialogs
         protected override void OnContentRendered(EventArgs e)
         {
             base.OnContentRendered(e);
-            if (Interlocked.CompareExchange(ref m_guiInitialized, 1, 0) == 0)
+            if (m_guiInitialized.Execute())
             {
                 InitializeGui(Hwnd);
             }

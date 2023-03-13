@@ -16,11 +16,11 @@
  * OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 using System;
+using System.Reflection;
+using System.Security;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Threading;
 
 using static CertViewer.Utilities.Utilities;
 
@@ -32,25 +32,19 @@ namespace CertViewer.Dialogs
         // Constructor
         // ==================================================================
 
-        public PasswordDialog(string password, uint currentAttempt, uint maxAttempts)
+        public PasswordDialog(SecureString password, uint currentAttempt, uint maxAttempts)
         {
             InitializeComponent();
             Attempts.Content = ((currentAttempt > 0) && (maxAttempts >= currentAttempt)) ? $"Attempt {currentAttempt} of {maxAttempts}" : string.Empty;
             if (IsNotEmpty(password))
             {
-                PasswordBox.Password = password;
+                SetPassword(PasswordBox, password);
                 PasswordBox.SelectAll();
             }
             PasswordBox.PasswordChanged += PasswordBox_PasswordChanged;
         }
 
-        public string Password
-        {
-            get
-            {
-                return PasswordBox.Password;
-            }
-        }
+        public SecureString Password => PasswordBox.SecurePassword;
 
         // ==================================================================
         // Event Handlers
@@ -84,7 +78,10 @@ namespace CertViewer.Dialogs
 
         private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            Button_OK.IsEnabled = IsNotEmpty(PasswordBox.Password);
+            using (SecureString password = PasswordBox.SecurePassword)
+            {
+                Button_OK.IsEnabled = IsNotEmpty(password);
+            }
         }
 
         private void PasswordBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -103,6 +100,26 @@ namespace CertViewer.Dialogs
                 e.Handled = true;
                 Button_Cancel_Click(sender, e);
             }
+        }
+
+        // ==================================================================
+        // Utility Methods
+        // ==================================================================
+
+        private static void SetPassword(PasswordBox control, SecureString password)
+        {
+            try
+            {
+                using (SecureString passwordCopy = password.Copy())
+                {
+                    MethodInfo setSecurePasswordMethod = typeof(PasswordBox).GetMethod("SetSecurePassword", BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { typeof(SecureString) }, null);
+                    if (IsNotNull(setSecurePasswordMethod))
+                    {
+                        setSecurePasswordMethod.Invoke(control, new[] { passwordCopy });
+                    }
+                }
+            }
+            catch { }
         }
     }
 }
