@@ -37,14 +37,17 @@ All settings are specified in the **`/configuration/appSettings`** section:
   *Supported digest algorithms:*  
   `MD5`, `RIPEMD160`, `SHA1`, `BLAKE2_160`, `BLAKE2_256`, `BLAKE3`, `SHA224`, `SHA256`, `SHA3_224`, `SHA3_256`
 
-* **`Topmost`**  
-  Keep the CertViewer window on top of all other windows. Default value: `True`.
+* **`MaximumInputLength`**  
+  Maximum input file length to read, in bytes. Default value: `16777216` (16 MiB).
 
 * **`MonitorClipboard`**  
   Monitor the clipboard for "viewable" certificates in the PEM format. Default value: `True`.
 
 * **`ReverseNameOrder`**  
   Display distinguished name components in *reverse* order (as per RFC 2253). Default value: `True`.
+
+* **`Topmost`**  
+  Keep the CertViewer window on top of all other windows. Default value: `True`.
 
 ## Website
 

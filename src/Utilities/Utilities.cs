@@ -38,6 +38,7 @@ using static Farmhash.Sharp.Farmhash;
 
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.Utilities.Encoders;
@@ -206,10 +207,15 @@ namespace CertViewer.Utilities
                 {
                     using (FileStream stream = TryOpenFile(fileName, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
-                        byte[] buffer = new byte[(int)Math.Min(stream.Length, maxLength)];
-                        if (Streams.ReadFully(stream, buffer) >= buffer.Length)
+                        long length;
+                        if ((length = stream.Length) > 0L)
                         {
-                            return buffer;
+                            byte[] buffer = new byte[checked((int)Math.Min(length, maxLength))];
+                            int bytesRead;
+                            if ((bytesRead = Streams.ReadFully(stream, buffer)) > 0)
+                            {
+                                return (bytesRead >= buffer.Length) ? buffer : Arrays.CopyOfRange(buffer, 0, bytesRead);
+                            }
                         }
                     }
                 }

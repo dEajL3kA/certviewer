@@ -60,11 +60,12 @@ namespace CertViewer.Dialogs
 {
     public partial class MainWindow : WindowEx
     {
-        private const int MAX_LENGTH = 32 * 1024 * 1024;
-        private const int WM_CLIPBOARDUPDATE = 0x031D;
         private const string BASE_TITLE = "Certificate Viewer";
         private const string UNSPECIFIED = "(Unspecified)";
+
         private const uint MAX_PASSWORD_ATTEMPTS = 8;
+        private const int DEFAULT_MAX_INPUT_LENGTH = 16 * 1024 * 1024;
+        private const int WM_CLIPBOARDUPDATE = 0x031D;
 
         private static readonly IList<string> SUPPORTED_FILE_TYPES = CollectionUtilities.ReadOnly(new string[] { "pem", "der", "cer", "crt", "p12", "pfx", "jks" });
         private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Select(ext => $"*.{ext}"))}|All Files|*.*");
@@ -83,6 +84,7 @@ namespace CertViewer.Dialogs
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
         public bool ReverseNameOrder { get; private set; } = true;
         public bool EnableMonitorClipboard { get; private set; } = true;
+        public int MaximumInputLength { get; private set; } = DEFAULT_MAX_INPUT_LENGTH;
 
         private readonly uint m_processId;
         private readonly IDictionary<TabItem, int> m_tabs;
@@ -581,6 +583,14 @@ namespace CertViewer.Dialogs
                         ReverseNameOrder = booleanValue;
                     }
                 });
+                GetSettingsValue(settings, "MaximumInputLength", value =>
+                {
+                    long longValue;
+                    if (long.TryParse(value, out longValue))
+                    {
+                        MaximumInputLength = checked((int)Math.Max(1024, Math.Min(int.MaxValue, longValue)));
+                    }
+                });
             }
             catch { }
         }
@@ -642,9 +652,7 @@ namespace CertViewer.Dialogs
                 }
                 catch (Exception e)
                 {
-                    TabControl.SelectedItem = Tab_CertInfo;
-                    Certificate = null;
-                    ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
+                    HandleExceptionError(e);
                 }
             }
             return false;
@@ -662,7 +670,7 @@ namespace CertViewer.Dialogs
                         foreach (string fileName in fileNames)
                         {
                             byte[] content;
-                            if (IsNotEmpty(content = ReadFileContents(fileName, MAX_LENGTH)))
+                            if (IsNotEmpty(content = ReadFileContents(fileName, MaximumInputLength)))
                             {
                                 Title = $"{GetBaseName(fileName)} \u2013 {BASE_TITLE}";
                                 m_clipbrdHash = HashCode.Empty;
@@ -685,9 +693,7 @@ namespace CertViewer.Dialogs
                     }
                     catch (Exception e)
                     {
-                        TabControl.SelectedItem = Tab_CertInfo;
-                        Certificate = null;
-                        ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
+                        HandleExceptionError(e);
                     }
                 }
             }
@@ -713,9 +719,7 @@ namespace CertViewer.Dialogs
             }
             catch (Exception e)
             {
-                TabControl.SelectedItem = Tab_CertInfo;
-                Certificate = null;
-                ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
+                HandleExceptionError(e);
             }
             return false;
         }
@@ -760,16 +764,12 @@ namespace CertViewer.Dialogs
                 }
                 else
                 {
-                    TabControl.SelectedItem = Tab_CertInfo;
-                    Certificate = null;
-                    ShowPlaceholder(true, "Error: Input does not contain a valid X.509 certificate!");
+                    throw new IOException("Input does not seem to contain a valid X.509 certificate!");
                 }
             }
             catch(Exception e)
             {
-                TabControl.SelectedItem = Tab_CertInfo;
-                Certificate = null;
-                ShowPlaceholder(true, $"{e.GetType().Name}: {e.Message}", e.ToString());
+                HandleExceptionError(e);
             }
             return success;
         }
@@ -1246,6 +1246,20 @@ namespace CertViewer.Dialogs
             }
         }
 
+        private void HandleExceptionError(Exception err)
+        {
+            Certificate = null;
+            TabControl.SelectedItem = Tab_CertInfo;
+            if (IsNotNull(err))
+            {
+                ShowPlaceholder(true, $"{err.GetType().Name}: {err.Message}", err.ToString());
+            }
+            else
+            {
+                ShowPlaceholder(true, "An unknown error has occurred!");
+            }
+        }
+
         private void ShowPlaceholder(bool show, string placeholderText = null, string details = null)
         {
             Tab_Extensions.IsEnabled = Tab_PemData.IsEnabled = Tab_Asn1Data.IsEnabled = show ? false : true;
@@ -1269,6 +1283,7 @@ namespace CertViewer.Dialogs
             if (Label_ErrorText.Visibility == Visibility.Visible)
             {
                 Label_ErrorText.Content = string.Empty;
+                Label_ErrorText.ToolTip = null;
                 Label_ErrorText.Visibility = Visibility.Hidden;
             }
         }
