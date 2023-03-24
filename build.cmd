@@ -2,7 +2,6 @@
 cd /d "%~dp0"
 
 set "PANDOC=C:\Program Files\Pandoc\pandoc.exe"
-set "INFO_ZIP=%CD%\etc\utilities\win32\zip.exe"
 
 if not exist "%VS2019INSTALLDIR%\Common7\Tools\VsDevCmd.bat" (
 	echo Error: VS2019INSTALLDIR not found!
@@ -20,7 +19,7 @@ for %%d in (bin obj out packages) do (
 	if exist %%~d\. rmdir /S /Q %%~d
 )
 
-for /F "tokens=* usebackq" %%i in (`start /B /WAIT "date" "%CD%\etc\utilities\win32\date.exe" "+%%Y-%%m-%%d"`) do (
+for /F "tokens=* usebackq" %%i in (`start /B /WAIT "date" "%CD%\etc\utilities\unxutils\date.exe" "+%%Y-%%m-%%d"`) do (
 	set "BUILD_DATE=%%~i"
 )
 
@@ -43,14 +42,14 @@ mkdir "out\target"
 copy /B "bin\Release\CertViewer.exe*" "out\target"
 copy /B "LICENSE.txt" "out\target"
 
-"%PANDOC%" -f markdown -t html5 --metadata pagetitle="CertViewer" --embed-resources --standalone --css "etc\style\github-markdown.css" -o "out\target\README.html" "README.md"
-"%CD%\etc\utilities\win32\minifier.exe" "out\target\README.html"
+"%CD%\etc\utilities\unxutils\grep.exe" -v "shields.io" "README.md" | "%PANDOC%" -f markdown -t html5 --metadata pagetitle="CertViewer" --embed-resources --standalone --css "etc\style\github-markdown.css" -o "out\target\README.html"
 
 attrib +R "out\target\*.*"
 
+set "ZIP_EXEFILE=%CD%\etc\utilities\info-zip\zip.exe"
 set "ZIP_OUTFILE=%CD%\out\CertViewer.%BUILD_DATE%.zip"
 pushd "out\target"
-"%INFO_ZIP%" -z -r -9 "%ZIP_OUTFILE%" *.* < "%CD%\LICENSE.txt"
+"%ZIP_EXEFILE%" -z -r -9 "%ZIP_OUTFILE%" *.* < "%CD%\LICENSE.txt"
 popd
 
 attrib +R "out\CertViewer.%BUILD_DATE%.zip"

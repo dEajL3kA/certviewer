@@ -1,5 +1,11 @@
 # CertViewer
 
+![](https://img.shields.io/github/v/release/dEajL3kA/certviewer)
+![](https://img.shields.io/github/release-date/deajl3ka/certviewer)
+![](https://img.shields.io/github/downloads/dEajL3kA/certviewer/total)
+![](https://img.shields.io/github/license/dEajL3kA/certviewer)
+![](https://img.shields.io/badge/.NET%20Framework-4.7.2%2B-green)
+
 **A simple X.509 certificate viewer for Microsoft Windows.**
 
 ![](etc/images/certviewer_0.png)
