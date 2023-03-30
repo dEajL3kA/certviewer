@@ -79,6 +79,7 @@ namespace CertViewer.Dialogs
 
         private HashCode m_clipbrdHash = HashCode.Empty;
         private ulong m_clipbrdTick = ulong.MaxValue;
+        private double m_initialHeight = double.PositiveInfinity;
 
         public X509Certificate Certificate { get; private set; } = null;
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
@@ -88,7 +89,7 @@ namespace CertViewer.Dialogs
 
         private readonly uint m_processId;
         private readonly IDictionary<TabItem, int> m_tabs;
-        private readonly ISet<TabItem> m_tabInitialized;
+        private readonly ISet<int> m_tabInitialized;
         private readonly DispatcherTimer m_clipbrdTimer;
 
         // ==================================================================
@@ -98,9 +99,9 @@ namespace CertViewer.Dialogs
         public MainWindow()
         {
             m_processId = GetCurrentProcessId();
-            m_tabInitialized = new HashSet<TabItem>();
             InitializeComponent();
             m_tabs = ItemsToDictionary<TabItem>(TabControl.Items);
+            m_tabInitialized = new HashSet<int>(m_tabs.Count);
             m_clipbrdTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromMilliseconds(25) };
             m_clipbrdTimer.Tick += OnClipboardChanged;
             ShowPlaceholder(true);
@@ -122,8 +123,9 @@ namespace CertViewer.Dialogs
 
         protected override void InitializeGui(IntPtr hWnd)
         {
-            MaxHeight = MinHeight = ActualHeight;
+            MaxHeight = MinHeight = m_initialHeight = ActualHeight;
             MinWidth = ActualWidth;
+            SizeToContent = SizeToContent.Manual;
             Checkbox_MonitorClipboard.IsChecked = EnableMonitorClipboard;
             Checkbox_StayOnTop.IsChecked = Topmost;
             InitializeContextMenu();
@@ -198,16 +200,15 @@ namespace CertViewer.Dialogs
 
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            foreach (TabItem item in e.AddedItems.OfType<TabItem>())
+            int selectedTabIndex = GetValueOrDefault(m_tabs, e.AddedItems.OfType<TabItem>().FirstOrDefault(), int.MaxValue);
+            if (m_tabInitialized.Add(selectedTabIndex))
             {
-                if (m_tabInitialized.Add(item))
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
-                    using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
-                    {
-                        InitializeTab(GetValueOrDefault(m_tabs, item, int.MaxValue));
-                    }
+                    InitializeTab(selectedTabIndex);
                 }
             }
+            MaxHeight = (selectedTabIndex > 1) ? double.PositiveInfinity : m_initialHeight;
         }
 
         private void OnClipboardChanged(object sender, EventArgs e)
@@ -757,7 +758,7 @@ namespace CertViewer.Dialogs
                     SetText(TextBox_SignAlgo, DefaultString(signatureInfo, UNSPECIFIED));
                     Button_SignAlgo.IsEnabled = IsNotEmpty(signatureInfo);
                     SetText(TextBox_Fingerprint, ToHexString(CalculateDigest(cert)));
-                    m_tabInitialized.Add(Tab_CertInfo);
+                    m_tabInitialized.Add(0);
                     TabControl.SelectedItem = Tab_CertInfo;
                     ShowPlaceholder(false);
                     BringWindowToFront(Hwnd);

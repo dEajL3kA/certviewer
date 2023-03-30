@@ -24,8 +24,6 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Threading;
 
 using static CertViewer.Utilities.Utilities;
 
