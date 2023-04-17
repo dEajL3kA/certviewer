@@ -49,6 +49,7 @@
         <BitmapImage x:Key="ImageSource_Help" UriSource="../Resources/ico_help.png"/>
         <BitmapImage x:Key="ImageSource_Key" UriSource="../Resources/ico_key.png"/>
         <BitmapImage x:Key="ImageSource_Numbers" UriSource="../Resources/ico_numbers.png"/>
+        <BitmapImage x:Key="ImageSource_Plus" UriSource="../Resources/ico_plus.png"/>
         <BitmapImage x:Key="ImageSource_Report" UriSource="../Resources/ico_report.png"/>
         <BitmapImage x:Key="ImageSource_Settings" UriSource="../Resources/ico_settings.png"/>
         <BitmapImage x:Key="ImageSource_Signature" UriSource="../Resources/ico_signature.png"/>
@@ -288,7 +289,10 @@
                     </DockPanel>
                 </TabItem>
             </TabControl>
-            <Image Source="{StaticResource ImageSource_Help}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" MouseUp="Image_About_MouseUp" Style="{StaticResource HotButton}"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Image Source="{StaticResource ImageSource_Plus}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,4,0" Cursor="Hand" MouseUp="Image_Instance_MouseUp" Style="{StaticResource HotButton}" ToolTip="Open new instance"/>
+                <Image Source="{StaticResource ImageSource_Help}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" MouseUp="Image_About_MouseUp" Style="{StaticResource HotButton}"  ToolTip="About..."/>
+            </StackPanel>
         </Grid>
     </DockPanel>
 </dialogs:WindowEx>

@@ -542,6 +542,14 @@ namespace CertViewer.Dialogs
             }
         }
 
+        private void Image_Instance_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
+            {
+                CreateProcess(GetExeFileName(), "--sub-process");
+            }
+        }
+
         // ==================================================================
         // Internal Methods
         // ==================================================================
@@ -611,9 +619,10 @@ namespace CertViewer.Dialogs
 
         private bool ParseCliArguments()
         {
+            IList<string> options = new List<string>();
             try
             {
-                string[] commandLineArgs = FilterCliArguments(Environment.GetCommandLineArgs().Skip(1)).ToArray();
+                string[] commandLineArgs = FilterCliArguments(Environment.GetCommandLineArgs().Skip(1), options).ToArray();
                 if (IsNotEmpty(commandLineArgs))
                 {
                     ParseCertificateFile(commandLineArgs);
@@ -621,7 +630,7 @@ namespace CertViewer.Dialogs
                 }
             }
             catch { }
-            return false;
+            return options.Contains("--sub-process", StringComparer.OrdinalIgnoreCase);
         }
 
         private bool ParseCertificateFromClipboard()

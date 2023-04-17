@@ -25,6 +25,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -146,7 +147,7 @@ namespace CertViewer.Utilities
             return dateOffset;
         }
 
-        public static IEnumerable<string> FilterCliArguments(IEnumerable<string> arguments)
+        public static IEnumerable<string> FilterCliArguments(IEnumerable<string> arguments, IList<string> options)
         {
             if (IsNotEmpty(arguments))
             {
@@ -155,9 +156,9 @@ namespace CertViewer.Utilities
                 {
                     if ((!flag) && argument.StartsWith("--", StringComparison.Ordinal))
                     {
-                        if (argument.Equals("--", StringComparison.Ordinal))
+                        if (!(flag = argument.Length <= 2))
                         {
-                            flag = true;
+                            options.Add(argument);
                         }
                         continue;
                     }
@@ -346,6 +347,36 @@ namespace CertViewer.Utilities
             {
                 dictionary.Add(key, value);
                 return true;
+            }
+            return false;
+        }
+
+        public static string GetExeFileName()
+        {
+            try
+            {
+                return Assembly.GetExecutingAssembly().Location;
+            }
+            catch { }
+            return string.Empty;
+        }
+
+        public static bool CreateProcess(string fileName, string arguments = null)
+        {
+            if (IsNotEmpty(fileName))
+            {
+                try
+                {
+                    using (Process process = new Process())
+                    {
+                        process.StartInfo.UseShellExecute = false;
+                        process.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
+                        process.StartInfo.FileName = fileName;
+                        process.StartInfo.Arguments = TrimToEmpty(arguments);
+                        return process.Start();
+                    }
+                }
+                catch { }
             }
             return false;
         }
