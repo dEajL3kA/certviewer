@@ -825,27 +825,24 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(stream))
             {
-                using (UnclosableStream unclosable = new UnclosableStream(stream))
+                X509Certificate cert;
+                try
                 {
-                    X509Certificate cert;
-                    try
+                    stream.Rewind();
+                    if (IsNotNull(cert = new X509CertificateParser().ReadCertificate(stream)))
                     {
-                        unclosable.Rewind();
-                        if (IsNotNull(cert = new X509CertificateParser().ReadCertificate(unclosable)))
-                        {
-                            return cert;
-                        }
+                        return cert;
                     }
-                    catch (Exception e) when ((e is IOException) || (e is CertificateException))
-                    {
-                        if (IsNotNull(cert = LoadKeyStoreFile(unclosable, busy)))
-                        {
-                            return cert;
-                        }
-                        throw;
-                    }
-                    return LoadKeyStoreFile(unclosable, busy);
                 }
+                catch (Exception e) when ((e is IOException) || (e is CertificateException))
+                {
+                    if (IsNotNull(cert = LoadKeyStoreFile(stream, busy)))
+                    {
+                        return cert;
+                    }
+                    throw;
+                }
+                return LoadKeyStoreFile(stream, busy);
             }
             return null;
         }
@@ -1403,7 +1400,7 @@ namespace CertViewer.Dialogs
             try
             {
                 stream.Rewind();
-                using (Asn1InputStream input = new Asn1InputStream(stream))
+                using (Asn1InputStream input = new Asn1InputStream(stream, stream.GetLength(), true))
                 {
                     if (input.ReadObject() is Asn1Sequence sequence)
                     {

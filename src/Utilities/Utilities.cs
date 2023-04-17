@@ -308,6 +308,20 @@ namespace CertViewer.Utilities
             }
         }
 
+        public static int GetLength(this Stream stream)
+        {
+            try
+            {
+                long length;
+                if ((length = stream.Length) <= int.MaxValue)
+                {
+                    return (int)length;
+                }
+            }
+            catch { }
+            return int.MaxValue;
+        }
+
         public static void GetSettingsValue(KeyValueConfigurationCollection settings, string name, Action<string> handler)
         {
             try
@@ -508,20 +522,6 @@ namespace CertViewer.Utilities
         public override bool Equals(object obj) => (obj is HashCode hashCode) && Equals(hashCode);
 
         public override int GetHashCode() => h.GetHashCode();
-    }
-
-    // ==================================================================
-    // Uncloseable Stream
-    // ==================================================================
-
-    /// <summary>Workaround for Asn1InputStream et al. that unconditionally close the 'inner' stream!</summary>
-    class UnclosableStream : FilterStream
-    {
-        public UnclosableStream(Stream stream) : base(stream) { }
-
-        public override void Close() { }
-
-        protected override void Dispose(bool _) { }
     }
 
     // ==================================================================
