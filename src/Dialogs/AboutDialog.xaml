@@ -1,6 +1,6 @@
 ﻿<!--
     CertViewer
-    Copyright (c) 2023 dEajL3kA <Cumpoing79@web.de>
+    Copyright (c) 2024 dEajL3kA <Cumpoing79@web.de>
     
     Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
     associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -65,7 +65,7 @@
                 Website: <Span Style="{StaticResource Hyperlink}"><Run MouseUp="Span_Hyperlink_MouseUp">https://deajl3ka.github.io/certviewer/</Run></Span><LineBreak/>
                 <LineBreak/>
                 <Bold FontWeight="SemiBold">Bouncy Castle Cryptography Library v<Run Name="VersionNumber_BouncyCastle">1.0.0</Run></Bold><LineBreak/>
-                Copyright (c) 2000-2023 The Legion of the Bouncy Castle<LineBreak/>
+                Copyright (c) 2000-2024 The Legion of the Bouncy Castle<LineBreak/>
                 Released under the MIT license<LineBreak/>
                 Website: <Span Style="{StaticResource Hyperlink}"><Run MouseUp="Span_Hyperlink_MouseUp">https://www.bouncycastle.org/csharp/</Run></Span><LineBreak/>
                 <LineBreak/>
