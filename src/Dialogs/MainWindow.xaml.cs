@@ -1019,7 +1019,7 @@ namespace CertViewer.Dialogs
                     List<KeyValuePair<string, string>> items = new List<KeyValuePair<string, string>>(8);
                     try
                     {
-                        items.Add(new KeyValuePair<string, string>("oid", subjectPublicKeyInfo.AlgorithmID.Algorithm.Id));
+                        items.Add(new KeyValuePair<string, string>("oid", subjectPublicKeyInfo.Algorithm.Algorithm.Id));
                         const string ALGORITHM_NAME = "algorithm";
                         if (asymmetricKeyParameter is ElGamalKeyParameters egKey)
                         {
@@ -1064,7 +1064,7 @@ namespace CertViewer.Dialogs
                             items.Add(new KeyValuePair<string, string>("value", ToHexString(subjectPublicKeyInfo.GetEncoded())));
                         }
                         Asn1Encodable parameters;
-                        if ((items.Count < 5) && IsNotNull(parameters = subjectPublicKeyInfo.AlgorithmID.Parameters))
+                        if ((items.Count < 5) && IsNotNull(parameters = subjectPublicKeyInfo.Algorithm.Parameters))
                         {
                             items.Add(new KeyValuePair<string, string>("parameter", ToHexString(parameters.GetEncoded())));
                         }
