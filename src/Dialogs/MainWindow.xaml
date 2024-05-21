@@ -78,7 +78,7 @@
                     <Setter Property="RenderOptions.BitmapScalingMode" Value="Fant"/>
                     <Style.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.66"/>
+                            <Setter Property="Opacity" Value="0.5"/>
                         </Trigger>
                     </Style.Triggers>
                 </Style>
