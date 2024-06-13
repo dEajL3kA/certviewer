@@ -1,7 +1,18 @@
 @echo off
 cd /d "%~dp0"
 
-set "PANDOC=C:\Program Files\Pandoc\pandoc.exe"
+if "%PANDOC%"=="" (
+	set "PANDOC=C:\Program Files\Pandoc\pandoc.exe"
+)
+
+if "%VS2019INSTALLDIR%"=="" (
+	set "VS2019INSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional"
+)
+
+if not exist "%PANDOC%" (
+	echo Error: PANDOC executable not found!
+	goto:finished
+)
 
 if not exist "%VS2019INSTALLDIR%\Common7\Tools\VsDevCmd.bat" (
 	echo Error: VS2019INSTALLDIR not found!
