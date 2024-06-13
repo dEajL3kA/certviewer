@@ -1,5 +1,5 @@
 /packages
-/.vs
+/**/.vs
 /**/out
 /**/obj
 /**/bin

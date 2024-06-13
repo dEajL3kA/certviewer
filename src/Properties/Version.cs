@@ -21,6 +21,6 @@ namespace CertViewer.Properties
     {
         public const string VERSION_MAJOR = "1";
         public const string VERSION_MINOR = "2";
-        public const string VERSION_PATCH = "8";
+        public const string VERSION_PATCH = "9";
     }
 }
