@@ -1,25 +1,17 @@
 @echo off
 cd /d "%~dp0"
 
-if "%PANDOC%"=="" (
-	set "PANDOC=C:\Program Files\Pandoc\pandoc.exe"
+set MSBUILD_PATH=
+
+for /f "usebackq delims=" %%i in (`etc\utilities\vswhere\vswhere.exe -latest -requires Microsoft.Component.MSBuild Microsoft.Net.Component.4.7.2.TargetingPack Microsoft.Net.ComponentGroup.DevelopmentPrerequisites -find MSBuild\**\Bin\MSBuild.exe`) do (
+	set "MSBUILD_PATH=%%~fi"
+	set "PATH=%%~dpi;%PATH%"
 )
 
-if "%VS2019INSTALLDIR%"=="" (
-	set "VS2019INSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional"
+if not exist "%MSBUILD_PATH%" (
+	echo Visual Studio with .NET Framework 4.7.2 component not found !!!
+	pause && goto:eof
 )
-
-if not exist "%PANDOC%" (
-	echo Error: PANDOC executable not found!
-	goto:finished
-)
-
-if not exist "%VS2019INSTALLDIR%\Common7\Tools\VsDevCmd.bat" (
-	echo Error: VS2019INSTALLDIR not found!
-	goto:finished
-)
-
-call "%VS2019INSTALLDIR%\Common7\Tools\VsDevCmd.bat" -no_logo
 
 echo ------------------------------------------------------------------------------
 echo Clean up...
@@ -38,10 +30,10 @@ echo ---------------------------------------------------------------------------
 echo Build application...
 echo ------------------------------------------------------------------------------
 
-MSBuild /t:Restore /p:Configuration=Release /p:Platform="Any CPU" "%CD%\CertViewer.sln"
+"%MSBUILD_PATH%" /t:Restore /p:Configuration=Release /p:Platform="Any CPU" "%CD%\CertViewer.sln"
 if %ERRORLEVEL% neq 0 goto:finished
 
-MSBuild /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU" /p:EnableCosturaFody="true" "%CD%\CertViewer.sln"
+"%MSBUILD_PATH%" /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU" /p:EnableCosturaFody="true" "%CD%\CertViewer.sln"
 if %ERRORLEVEL% neq 0 goto:finished
 
 echo ------------------------------------------------------------------------------
@@ -53,7 +45,7 @@ mkdir "out\target"
 copy /B "bin\Release\CertViewer.exe*" "out\target"
 copy /B "LICENSE.txt" "out\target"
 
-"%CD%\etc\utilities\unxutils\grep.exe" -v "shields.io" "README.md" | "%PANDOC%" -f markdown -t html5 --metadata pagetitle="CertViewer" --embed-resources --standalone --css "etc\style\github-markdown.css" -o "out\target\README.html"
+"%CD%\etc\utilities\unxutils\grep.exe" -v "shields.io" "README.md" | "%CD%\etc\utilities\pandoc\pandoc.exe" -f markdown -t html5 --metadata pagetitle="CertViewer" --embed-resources --standalone --css "etc\style\github-markdown.css" -o "out\target\README.html"
 
 attrib +R "out\target\*.*"
 
