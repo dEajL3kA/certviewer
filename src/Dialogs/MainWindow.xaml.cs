@@ -92,6 +92,12 @@ namespace CertViewer.Dialogs
         private readonly ISet<int> m_tabInitialized;
         private readonly DispatcherTimer m_clipbrdTimer;
 
+#if DEBUG
+        private static readonly bool IS_DEBUG = true;
+#else
+        private static readonly bool IS_DEBUG = false;
+#endif
+
         // ==================================================================
         // Constructor
         // ==================================================================
@@ -117,8 +123,15 @@ namespace CertViewer.Dialogs
             try
             {
                 AddClipboardFormatListener(new HandleRef(this, source.Handle));
+                if (IS_DEBUG)
+                {
+                    Title += " [DEBUG]";
+                }
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
         }
 
         protected override void InitializeGui(IntPtr hWnd)
@@ -163,7 +176,10 @@ namespace CertViewer.Dialogs
             {
                 RemoveClipboardFormatListener(new HandleRef(this, Hwnd));
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
         }
 
         private void Window_PreviewDragEnter(object sender, DragEventArgs e)
@@ -172,7 +188,10 @@ namespace CertViewer.Dialogs
             {
                 e.Effects = (IsWindowEnabled(new HandleRef(this, Hwnd)) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
             e.Handled = true;
         }
 
@@ -194,7 +213,10 @@ namespace CertViewer.Dialogs
                     }
                 }
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
             e.Handled = true;
         }
 
@@ -221,7 +243,10 @@ namespace CertViewer.Dialogs
                     ParseCertificateFromClipboard();
                 }
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
         }
 
         private void Button_SubjectDN_Click(object sender, RoutedEventArgs e)
@@ -252,7 +277,10 @@ namespace CertViewer.Dialogs
                     TryCopyToClipboard(ToHexString(cert.SerialNumber));
                     SystemSounds.Beep.Play();
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
         private void Button_BasicConstraints_Click(object sender, RoutedEventArgs e)
@@ -266,7 +294,10 @@ namespace CertViewer.Dialogs
                     TryCopyToClipboard((basicConstraints < 0) ? "End entity certificate (subject is not CA)" : $"CA certificate, max. path length: {DecodePathLenConstraint(basicConstraints)}");
                     SystemSounds.Beep.Play();
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
 
@@ -338,7 +369,10 @@ namespace CertViewer.Dialogs
                         SystemSounds.Beep.Play();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
 
@@ -356,7 +390,10 @@ namespace CertViewer.Dialogs
                         SystemSounds.Beep.Play();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
 
@@ -441,7 +478,10 @@ namespace CertViewer.Dialogs
                     TryCopyToClipboard($"{Enum.GetName(typeof(DigestAlgo), DigestAlgorithm)}={digestHex}");
                     SystemSounds.Beep.Play();
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
 
@@ -491,7 +531,10 @@ namespace CertViewer.Dialogs
                 TryCopyToClipboard(sb.ToString());
                 SystemSounds.Beep.Play();
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
             HideErrorText();
         }
 
@@ -516,7 +559,10 @@ namespace CertViewer.Dialogs
                     TryCopyToClipboard(TextBox_Asn1Data.Text);
                     SystemSounds.Beep.Play();
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
 
@@ -529,7 +575,10 @@ namespace CertViewer.Dialogs
                     TryCopyToClipboard(TextBox_PemData.Text);
                     SystemSounds.Beep.Play();
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
 
@@ -601,7 +650,10 @@ namespace CertViewer.Dialogs
                     }
                 });
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
         }
 
         private void InitializeContextMenu()
@@ -614,7 +666,10 @@ namespace CertViewer.Dialogs
                     item.IsChecked = (algorithm.HasValue) && algorithm.Value.Equals(DigestAlgorithm);
                 }
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
         }
 
         private bool ParseCliArguments()
@@ -629,7 +684,10 @@ namespace CertViewer.Dialogs
                     return true;
                 }
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
             return options.Contains("--sub-process", StringComparer.OrdinalIgnoreCase);
         }
 
@@ -662,7 +720,7 @@ namespace CertViewer.Dialogs
                 }
                 catch (Exception e)
                 {
-                    HandleExceptionError(e);
+                    if (IS_DEBUG) throw; else HandleExceptionError(e);
                 }
             }
             return false;
@@ -703,7 +761,7 @@ namespace CertViewer.Dialogs
                     }
                     catch (Exception e)
                     {
-                        HandleExceptionError(e);
+                        if (IS_DEBUG) throw; else HandleExceptionError(e);
                     }
                 }
             }
@@ -729,7 +787,7 @@ namespace CertViewer.Dialogs
             }
             catch (Exception e)
             {
-                HandleExceptionError(e);
+                if (IS_DEBUG) throw; else HandleExceptionError(e);
             }
             return false;
         }
@@ -779,7 +837,7 @@ namespace CertViewer.Dialogs
             }
             catch(Exception e)
             {
-                HandleExceptionError(e);
+                if (IS_DEBUG) throw; else HandleExceptionError(e);
             }
             return success;
         }
@@ -826,7 +884,10 @@ namespace CertViewer.Dialogs
                             break;
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
         }
 
@@ -914,7 +975,10 @@ namespace CertViewer.Dialogs
                         throw; /*too many attempts*/
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return null;
         }
@@ -959,7 +1023,10 @@ namespace CertViewer.Dialogs
                         throw; /*too many attempts*/
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return null;
         }
@@ -1069,7 +1136,10 @@ namespace CertViewer.Dialogs
                             items.Add(new KeyValuePair<string, string>("parameter", ToHexString(parameters.GetEncoded())));
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                        if (IS_DEBUG) throw;
+                    }
                     DetailsView viewer = new DetailsView(items, CreateAsn1Dump(subjectPublicKeyInfo), CreatePemData("PUBLIC KEY", subjectPublicKeyInfo)) { Owner = this, Title = "Public Key" };
                     viewer.ShowDialog(busy);
                 }
@@ -1093,7 +1163,10 @@ namespace CertViewer.Dialogs
                             items.Add(new KeyValuePair<string, string>("parameter", ToHexString(sigParameters)));
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                        if (IS_DEBUG) throw;
+                    }
                     DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Signature" };
                     viewer.ShowDialog(busy);
                 }
@@ -1239,7 +1312,10 @@ namespace CertViewer.Dialogs
                         case DigestAlgo.BLAKE3:     return DigestUtilities.CalculateDigest("BLAKE3-256",  cert.GetEncoded());
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return Array.Empty<byte>();
         }
@@ -1415,7 +1491,10 @@ namespace CertViewer.Dialogs
                     }
                 }
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
             return false;
         }
 
@@ -1431,7 +1510,10 @@ namespace CertViewer.Dialogs
                     return (headerValue >= MAGIC_NUMBER + 1U) && (headerValue <= MAGIC_NUMBER + 2U);
                 }
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
             return false;
         }
 
@@ -1452,7 +1534,10 @@ namespace CertViewer.Dialogs
                         return sb.ToString();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return string.Empty;
         }
@@ -1491,7 +1576,10 @@ namespace CertViewer.Dialogs
                         return sb.ToString();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return string.Empty;
         }
@@ -1516,7 +1604,10 @@ namespace CertViewer.Dialogs
                         return sb.ToString();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return string.Empty;
         }
@@ -1550,7 +1641,10 @@ namespace CertViewer.Dialogs
                         return $"Other ({asymmetricKeyParameter.GetType().Name})";
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return string.Empty;
         }
@@ -1563,7 +1657,10 @@ namespace CertViewer.Dialogs
                 {
                     return $"{sigAlgName}, length: {(signature.GetBitStream().Length * 8) - signature.PadBits} bits";
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return sigAlgName;
         }
@@ -1605,7 +1702,10 @@ namespace CertViewer.Dialogs
                         return sb.ToString();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
 
             }
             return string.Empty;
@@ -1640,8 +1740,10 @@ namespace CertViewer.Dialogs
                         return sb.ToString();
                     }
                 }
-                catch { }
-
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return string.Empty;
         }
@@ -1662,7 +1764,10 @@ namespace CertViewer.Dialogs
                         return sb.ToString();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
 
             }
             return string.Empty;
@@ -1764,7 +1869,10 @@ namespace CertViewer.Dialogs
                         return SubjectKeyIdentifier.GetInstance(data);
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return null;
         }
@@ -1781,7 +1889,10 @@ namespace CertViewer.Dialogs
                         return AuthorityKeyIdentifier.GetInstance(data);
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return null;
         }
@@ -1798,7 +1909,10 @@ namespace CertViewer.Dialogs
                         return CrlDistPoint.GetInstance(data);
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return null;
         }
@@ -1815,7 +1929,10 @@ namespace CertViewer.Dialogs
                         return AuthorityInformationAccess.GetInstance(data);
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return null;
         }
@@ -1832,7 +1949,10 @@ namespace CertViewer.Dialogs
                         return CertificatePolicies.GetInstance(data);
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return null;
         }
@@ -1849,7 +1969,10 @@ namespace CertViewer.Dialogs
                         return value;
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return string.Empty;
         }
@@ -1868,7 +1991,10 @@ namespace CertViewer.Dialogs
                         return textWriter.ToString();
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
             }
             return string.Empty;
         }
