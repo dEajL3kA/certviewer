@@ -151,10 +151,10 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography">
-      <Version>2.4.0</Version>
+      <Version>2.6.1</Version>
     </PackageReference>
     <PackageReference Include="Costura.Fody">
-      <Version>5.8.0-alpha0098 </Version>
+      <Version>6.0.0</Version>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Farmhash.Sharp">
