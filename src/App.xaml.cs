@@ -16,10 +16,12 @@ namespace CertViewer
             internal static readonly string MAX_KEY_SIZE = (1U << 16).ToString();
         }
 
+#if !DEBUG
         public App()
         {
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(ExceptionHandler);
         }
+#endif
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -48,6 +50,7 @@ namespace CertViewer
             GC.KeepAlive(typeof(Asn1Encodable));
         }
 
+#if !DEBUG
         private static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args)
         {
             try
@@ -60,6 +63,7 @@ namespace CertViewer
             catch { }
             Environment.Exit(-1);
         }
+#endif
 
         private static bool StrCaseCmp(string s1, string s2)
         {

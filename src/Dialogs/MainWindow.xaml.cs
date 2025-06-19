@@ -1303,12 +1303,7 @@ namespace CertViewer.Dialogs
         {
             Dictionary<DerObjectIdentifier, string> builder = new Dictionary<DerObjectIdentifier, string>(X509Name.DefaultSymbols)
             {
-                { X509Name.Name,                       "name"                                           },
-                { X509Name.DmdName,                    "dmdName"                                        },
-                { X509Name.OrganizationIdentifier,     "organizationIdentifier"                         },
-                { MakeOid("1.3.6.1.4.1.311.60.2.1.1"), "jurisdictionOfIncorporationLocalityName"        },
-                { MakeOid("1.3.6.1.4.1.311.60.2.1.2"), "jurisdictionOfIncorporationStateOrProvinceName" },
-                { MakeOid("1.3.6.1.4.1.311.60.2.1.3"), "jurisdictionOfIncorporationCountryName"         }
+                { X509Name.DmdName, "dmdName" },
             };
             return CollectionUtilities.ReadOnly(builder);
         }
