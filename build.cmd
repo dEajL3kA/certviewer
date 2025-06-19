@@ -8,8 +8,23 @@ for /f "usebackq delims=" %%i in (`etc\utilities\vswhere\vswhere.exe -latest -re
 	set "PATH=%%~dpi;%PATH%"
 )
 
+if "%GIT_EXEFILE%" == "" (
+	if exist "%ProgramFiles%\Git\bin\git.exe" (
+		set "GIT_EXEFILE=%ProgramFiles%\Git\bin\git.exe"
+	) else (
+		if exist "%ProgramFiles(x86)%\Git\bin\git.exe" (
+			set "GIT_EXEFILE=%ProgramFiles(x86)%\Git\bin\git.exe"
+		)
+	)
+)
+
 if not exist "%MSBUILD_PATH%" (
 	echo Visual Studio with .NET Framework 4.7.2 component not found !!!
+	pause && goto:eof
+)
+
+if not exist "%GIT_EXEFILE%" (
+	echo Git executable file not found !!!
 	pause && goto:eof
 )
 
@@ -17,13 +32,17 @@ echo ---------------------------------------------------------------------------
 echo Clean up...
 echo ------------------------------------------------------------------------------
 
-for %%d in (bin obj out packages) do (
+for %%d in (.vs bin obj out packages) do (
 	echo %%~d
-	if exist %%~d\. rmdir /S /Q %%~d
+	if exist "%%~d" rmdir /S /Q "%%~d"
 )
 
-for /F "tokens=* usebackq" %%i in (`start /B /WAIT "date" "%CD%\etc\utilities\unxutils\date.exe" "+%%Y-%%m-%%d"`) do (
+for /F "tokens=* usebackq" %%i in (`etc\utilities\unxutils\date.exe "+%%Y-%%m-%%d"`) do (
 	set "BUILD_DATE=%%~i"
+)
+
+for /F "tokens=* usebackq" %%i in (`etc\utilities\unxutils\date.exe "+%%H:%%M:%%S"`) do (
+	set "BUILD_TIME=%%~i"
 )
 
 echo ------------------------------------------------------------------------------
@@ -41,6 +60,10 @@ echo Create bundles...
 echo ------------------------------------------------------------------------------
 
 mkdir "out\target"
+
+"%GIT_EXEFILE%" describe --long --dirty > "out\CertViewer.%BUILD_DATE%.txt"
+set /p BUILD_VERS=< "out\CertViewer.%BUILD_DATE%.txt"
+echo Version %BUILD_VERS%, built on %BUILD_DATE% at %BUILD_TIME%> "out\target\VERSION.txt"
 
 copy /B "bin\Release\CertViewer.exe*" "out\target"
 copy /B "LICENSE.txt" "out\target"
