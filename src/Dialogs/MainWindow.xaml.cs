@@ -531,17 +531,15 @@ namespace CertViewer.Dialogs
                 TryCopyToClipboard(sb.ToString());
                 SystemSounds.Beep.Play();
             }
-            catch
-            {
-                if (IS_DEBUG) throw;
-            }
+            catch { }
             HideErrorText();
         }
 
         private void Image_Placeholder_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount == 2))
+            if (e.ChangedButton.Equals(MouseButton.Left))
             {
+                e.Handled = true;
                 OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = FILE_OPEN_FILTER.Value };
                 if (openFileDialog.ShowDialog(this).GetValueOrDefault(false))
                 {
@@ -1348,6 +1346,7 @@ namespace CertViewer.Dialogs
             Tab_Extensions.IsEnabled = Tab_PemData.IsEnabled = Tab_Asn1Data.IsEnabled = show ? false : true;
             Panel_Placeholder.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
             Panel_CertInfo.Visibility = show ? Visibility.Hidden : Visibility.Visible;
+            Label_HowToOpen.Visibility = IsNotEmpty(placeholderText) ? Visibility.Hidden : Visibility.Visible;
             Label_ErrorText.Visibility = IsNotEmpty(placeholderText) ? Visibility.Visible : Visibility.Hidden;
             Label_ErrorText.Content = DefaultString(placeholderText);
             Label_ErrorText.ToolTip = IsNotEmpty(details) ? details : null;
