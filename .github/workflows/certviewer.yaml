@@ -16,14 +16,16 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        configuration: [ { name: Release, fody: true }, { name: Debug, fody: false } ]
+        target: [ { name: release, conf: Release, costura: false }, { name: release+costura, conf: Release, costura: true }, { name: debug, conf: Debug, costura: false } ]
     steps:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
       - uses: nuget/setup-nuget@v2
       - run: nuget restore CertViewer.sln
-      - run: msbuild /t:Rebuild /p:Configuration=${{ matrix.configuration.name }} /p:Platform="Any CPU" /p:EnableCosturaFody="${{ matrix.configuration.fody }}" CertViewer.sln
+      - run: msbuild /t:Rebuild /p:Configuration=${{ matrix.target.conf }} /p:Platform="Any CPU" /p:EnableCosturaFody="${{ matrix.target.costura }}" CertViewer.sln
       - uses: actions/upload-artifact@v4
         with:
-          name: certviewer.${{ matrix.configuration.name }}
-          path: bin\${{ matrix.configuration.name }}\
+          name: certviewer.${{ matrix.target.name }}
+          path: |
+            bin\${{ matrix.target.conf }}\
+            !bin\**\Costura.*
