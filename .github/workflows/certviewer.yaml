@@ -1,0 +1,27 @@
+name: "certviewer-CI"
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  NON_INTERACTIVE: 1
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        configuration: [Release, Debug]
+    steps:
+      - uses: microsoft/setup-msbuild@v2
+      - uses: actions/checkout@v4
+      - run: msbuild /t:Rebuild /p:Configuration=${{ matrix.configuration }} /p:Platform="Any CPU" /p:EnableCosturaFody="true" CertViewer.sln
+      - uses: actions/upload-artifact@v4
+        with:
+          name: certviewer.${{ matrix.configuration }}
+          path: bin\${{ matrix.configuration }}\
