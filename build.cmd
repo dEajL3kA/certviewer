@@ -14,6 +14,24 @@ if "%GIT_EXEFILE%" == "" (
 	) else (
 		if exist "%ProgramFiles(x86)%\Git\bin\git.exe" (
 			set "GIT_EXEFILE=%ProgramFiles(x86)%\Git\bin\git.exe"
+		) else (
+			if exist "%LOCALAPPDATA%\Programs\Git\bin\git.exe" (
+				set "GIT_EXEFILE=%LOCALAPPDATA%\Programs\Git\bin\git.exe"
+			)
+		)
+	)
+)
+
+if "%PANDOC_EXEFILE%" == "" (
+	if exist "%ProgramFiles%\Pandoc\pandoc.exe" (
+		set "PANDOC_EXEFILE=%ProgramFiles%\Pandoc\pandoc.exe"
+	) else (
+		if exist "%ProgramFiles(x86)%\Pandoc\pandoc.exe" (
+			set "PANDOC_EXEFILE=%ProgramFiles(x86)%\Pandoc\pandoc.exe"
+		) else (
+			if exist "%LOCALAPPDATA%\Pandoc\pandoc.exe" (
+				set "PANDOC_EXEFILE=%LOCALAPPDATA%\Pandoc\pandoc.exe"
+			)
 		)
 	)
 )
@@ -28,13 +46,24 @@ if not exist "%GIT_EXEFILE%" (
 	pause && goto:eof
 )
 
+if not exist "%PANDOC_EXEFILE%" (
+	echo Pandoc executable file not found !!!
+	pause && goto:eof
+)
+
 echo ------------------------------------------------------------------------------
 echo Clean up...
 echo ------------------------------------------------------------------------------
 
 for %%d in (.vs bin obj out packages) do (
 	echo %%~d
-	if exist "%%~d" rmdir /S /Q "%%~d"
+	if exist "%%~d" (
+		rmdir /S /Q "%%~d" || del /F /Q "%%~d"
+	)
+	if exist "%%~d" (
+		echo Directory "%%~d" could not be removed !!!
+		pause && goto:eof
+	)
 )
 
 for /F "tokens=* usebackq" %%i in (`etc\utilities\unxutils\date.exe "+%%Y-%%m-%%d"`) do (
@@ -68,7 +97,7 @@ echo Version %BUILD_VERS%, built on %BUILD_DATE% at %BUILD_TIME%> "out\target\VE
 copy /B "bin\Release\CertViewer.exe*" "out\target"
 copy /B "LICENSE.txt" "out\target"
 
-"%CD%\etc\utilities\unxutils\grep.exe" -v "shields.io" "README.md" | "%CD%\etc\utilities\pandoc\pandoc.exe" -f markdown -t html5 --metadata pagetitle="CertViewer" --embed-resources --standalone --css "etc\style\github-markdown.css" -o "out\target\README.html"
+"%CD%\etc\utilities\unxutils\grep.exe" -v "shields.io" "README.md" | "%PANDOC_EXEFILE%" -f markdown -t html5 --metadata pagetitle="CertViewer" --embed-resources --standalone --css "etc\style\github-markdown.css" -o "out\target\README.html"
 
 attrib +R "out\target\*.*"
 
