@@ -1,0 +1,35 @@
+name: "certviewer-CI"
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  NON_INTERACTIVE: 1
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [ { name: release, conf: Release, costura: false }, { name: costura, conf: Release, costura: true }, { name: debug, conf: Debug, costura: false } ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: microsoft/setup-msbuild@v2
+      - uses: nuget/setup-nuget@v2
+      - run: msbuild /t:Restore /p:Configuration=${{ matrix.target.conf }} /p:Platform="Any CPU" CertViewer.sln
+      - run: msbuild /t:Rebuild /p:Configuration=${{ matrix.target.conf }} /p:Platform="Any CPU" /p:EnableCosturaFody="${{ matrix.target.costura }}" CertViewer.sln
+      - run: git describe --long --dirty > bin\${{ matrix.target.conf }}\VERSION.txt
+      - run: cp -Path LICENSE.txt -Destination bin\${{ matrix.target.conf }}\LICENSE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: certviewer.${{ matrix.target.name }}
+          path: |
+            bin\${{ matrix.target.conf }}\
+            !bin\**\Costura.*
