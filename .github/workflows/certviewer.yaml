@@ -16,14 +16,14 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        configuration: [Release, Debug]
+        configuration: [ { name: Release, fody: true }, { name: Debug, fody: false } ]
     steps:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
       - uses: nuget/setup-nuget@v2
       - run: nuget restore CertViewer.sln
-      - run: msbuild /t:Rebuild /p:Configuration=${{ matrix.configuration }} /p:Platform="Any CPU" /p:EnableCosturaFody="true" CertViewer.sln
+      - run: msbuild /t:Rebuild /p:Configuration=${{ matrix.configuration.name }} /p:Platform="Any CPU" /p:EnableCosturaFody="${{ matrix.configuration.fody }}" CertViewer.sln
       - uses: actions/upload-artifact@v4
         with:
-          name: certviewer.${{ matrix.configuration }}
-          path: bin\${{ matrix.configuration }}\
+          name: certviewer.${{ matrix.configuration.name }}
+          path: bin\${{ matrix.configuration.name }}\
