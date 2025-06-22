@@ -99,7 +99,7 @@ CertViewer includes the following works:
   MIT license  
   Copyright (c) 2018 Source Foundry Authors
 
-* **[Farm-Fresh Web](http://www.fatcow.com/free-icons) Icons by FatCow**  
+* **[Farm-Fresh Web](https://web.archive.org/web/20160323032439/http://www.fatcow.com/free-icons) Icons by FatCow**  
   Free for personal and commercial use with attribution
 
 * **[Certificate Icons](https://www.flaticon.com/free-icon/certificate_3885250) by DinosoftLabs**  
