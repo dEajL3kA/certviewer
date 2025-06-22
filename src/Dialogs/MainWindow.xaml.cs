@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Configuration;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,6 +28,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -53,6 +55,7 @@ using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Extension;
 
 using CertViewer.Utilities;
+
 using static CertViewer.Utilities.NativeMethods;
 using static CertViewer.Utilities.Utilities;
 
@@ -86,6 +89,7 @@ namespace CertViewer.Dialogs
         public bool ReverseNameOrder { get; private set; } = true;
         public bool EnableMonitorClipboard { get; private set; } = true;
         public int MaximumInputLength { get; private set; } = DEFAULT_MAX_INPUT_LENGTH;
+        public bool EnableUpdateCheck { get; private set; } = true;
 
         private readonly uint m_processId;
         private readonly IDictionary<TabItem, int> m_tabs;
@@ -112,6 +116,10 @@ namespace CertViewer.Dialogs
             m_clipbrdTimer.Tick += OnClipboardChanged;
             ShowPlaceholder(true);
             LoadConfigurationSettings();
+            if (IS_DEBUG)
+            {
+                Title += " [DEBUG]";
+            }
         }
 
         // ==================================================================
@@ -123,10 +131,6 @@ namespace CertViewer.Dialogs
             try
             {
                 AddClipboardFormatListener(new HandleRef(this, source.Handle));
-                if (IS_DEBUG)
-                {
-                    Title += " [DEBUG]";
-                }
             }
             catch
             {
@@ -147,7 +151,21 @@ namespace CertViewer.Dialogs
                 DisableMinimizeMaximizeButtons(hWnd, false);
                 BringWindowToFront(hWnd);
             }
-            catch { }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
+            try
+            {
+                if (EnableUpdateCheck)
+                {
+                    Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(CheckForUpdates));
+                }
+            }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
             if ((!ParseCliArguments()) && EnableMonitorClipboard)
             {
                 ParseCertificateFromClipboard();
@@ -645,6 +663,14 @@ namespace CertViewer.Dialogs
                     if (long.TryParse(value, out longValue))
                     {
                         MaximumInputLength = checked((int)Math.Max(1024, Math.Min(int.MaxValue, longValue)));
+                    }
+                });
+                GetSettingsValue(settings, "EnableUpdateCheck", value =>
+                {
+                    bool booleanValue;
+                    if (bool.TryParse(value, out booleanValue))
+                    {
+                        EnableUpdateCheck = booleanValue;
                     }
                 });
             }
@@ -2043,9 +2069,61 @@ namespace CertViewer.Dialogs
                 return text;
             }
         }
+
         private static DerObjectIdentifier MakeOid(string id)
         {
             return new DerObjectIdentifier(id);
+        }
+
+        private async void CheckForUpdates()
+        {
+            const string VERSION_URL = "https://deajl3ka.github.io/certviewer/api/latest-version.txt";
+            const string WEBSITE_URL = "https://deajl3ka.github.io/certviewer/";
+            try
+            {
+                Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL));
+                if (!ReferenceEquals(versionRemote, null))
+                {
+                    Tuple<Version, Version, DateTime> versionLocal = GetVersionAndBuildDate();
+                    if (versionRemote.CompareTo(versionLocal.Item1) > 0)
+                    {
+                        const string message = "A new program version is available!\n\nInstalled version: {0}\nLatest available version: {1}\n\nIt is recommended that you upgrade to the new version. Do you want to download the new version now?";
+                        if (MessageBox.Show(string.Format(message, versionLocal.Item1, versionRemote), "Update Notification", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                        {
+                            Process.Start(new ProcessStartInfo { FileName = WEBSITE_URL, UseShellExecute = true });
+                            Application.Current.Shutdown();
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                if (IS_DEBUG) throw;
+            }
+        }
+
+        private Version CheckForUpdatesTask(string versionUrl)
+        {
+            string updateInfo;
+            for (int retry = 0; retry < 5; ++retry)
+            {
+                try
+                {
+                    if (!string.IsNullOrEmpty(updateInfo = DownloadFileContents(versionUrl)))
+                    {
+                        Version version;
+                        if (Version.TryParse(updateInfo, out version))
+                        {
+                            return version;
+                        }
+                    }
+                }
+                catch
+                {
+                    if (IS_DEBUG) throw;
+                }
+            }
+            return null;
         }
     }
 }

@@ -55,6 +55,9 @@ All settings are specified in the **`/configuration/appSettings`** section:
 * **`Topmost`**  
   Keep the CertViewer window on top of all other windows. Default value: `True`.
 
+* **`EnableUpdateCheck`**  
+  Automatically check for new program versions at startup. Default value: `True`.
+
 ## Website
 
 For news and updates, please check the official project website at:  

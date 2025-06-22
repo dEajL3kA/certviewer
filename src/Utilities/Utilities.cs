@@ -18,14 +18,16 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Cache;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
-using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -35,17 +37,16 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
 
-using static Farmhash.Sharp.Farmhash;
-
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.Utilities.Collections;
-using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.Utilities.Encoders;
+using Org.BouncyCastle.Utilities.IO;
 
 using static CertViewer.Utilities.NativeMethods;
 using static CertViewer.Utilities.Utilities;
+using static Farmhash.Sharp.Farmhash;
 
 namespace CertViewer.Utilities
 {
@@ -448,6 +449,61 @@ namespace CertViewer.Utilities
                 catch { }
             }
             return 0U;
+        }
+
+        public static string DownloadFileContents(string url)
+        {
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.CachePolicy = new RequestCachePolicy(RequestCacheLevel.BypassCache);
+                request.Timeout = 12000;
+                request.ReadWriteTimeout = 8000;
+                using (HttpWebResponse response = GetResponseNoThrow(request))
+                {
+                    if (IsHttpSuccess(response.StatusCode))
+                    {
+                        using (Stream responseStream = response.GetResponseStream())
+                        {
+                            using (StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8, false))
+                            {
+                                string line;
+                                while ((line = streamReader.ReadLine()) != null)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(line))
+                                    {
+                                        return line.Trim();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+            return string.Empty;
+        }
+
+        private static HttpWebResponse GetResponseNoThrow(HttpWebRequest request)
+        {
+            WebResponse webResponse;
+            try
+            {
+                webResponse = request.GetResponse();
+            }
+            catch (WebException we)
+            {
+                if ((we.Status != WebExceptionStatus.ProtocolError) || ReferenceEquals(webResponse = we.Response, null))
+                {
+                    throw; /*re-throw!*/
+                }
+            }
+            return (HttpWebResponse)webResponse;
+        }
+
+        private static bool IsHttpSuccess(HttpStatusCode status)
+        {
+            return (status >= HttpStatusCode.OK) && (status < HttpStatusCode.MultipleChoices);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
