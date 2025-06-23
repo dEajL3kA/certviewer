@@ -37,6 +37,8 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
 
+using Microsoft.Win32;
+
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Utilities;
@@ -58,6 +60,7 @@ namespace CertViewer.Utilities
 
     static class Utilities
     {
+        private const string REGISTRY_KEY = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{815DB72A-522C-4808-8F94-B31039969022}";
         private static readonly Lazy<Regex> CONTROL_CHARACTERS = new Lazy<Regex>(() => new Regex(@"[\u0000-\u001F\u007F]", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
 
         public static StringBuilder Append(StringBuilder sb, string text)
@@ -451,6 +454,57 @@ namespace CertViewer.Utilities
             return 0U;
         }
 
+        public static ulong GetUnixTimeSeconds()
+        {
+            try
+            {
+                long unixTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                if (unixTime >= 0)
+                {
+                    return (ulong)unixTime;
+                }
+            }
+            catch {}
+            return ulong.MinValue;
+        }
+
+        public static ulong? ReadRegValue(string valueName)
+        {
+            try
+            {
+                using (RegistryKey subkey = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY, false))
+                {
+                    if (!ReferenceEquals(subkey, null))
+                    {
+                        object value = subkey.GetValue(valueName);
+                        if (value is int)
+                            return (ulong)(int)value;
+                        if (value is long)
+                            return (ulong)(long)value;
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        public static bool WriteRegValue(string valueName, ulong newValue)
+        {
+            try
+            {
+                using (RegistryKey subkey = Registry.CurrentUser.CreateSubKey(REGISTRY_KEY, true))
+                {
+                    if (!ReferenceEquals(subkey, null))
+                    {
+                        subkey.SetValue(valueName, (long)newValue, RegistryValueKind.QWord);
+                        return true;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
         public static string DownloadFileContents(string url)
         {
             const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
@@ -599,17 +653,17 @@ namespace CertViewer.Utilities
     {
         public static readonly HashCode Empty = Compute(string.Empty);
 
-        public readonly ulong h;
+        public readonly ulong Value;
 
-        public HashCode(ulong h) => this.h = h;
+        public HashCode(ulong h) => Value = h;
 
         public static HashCode Compute(string text) => IsNotNull(text) ? new HashCode(Hash64(text)) : Compute(string.Empty);
 
-        public bool Equals(HashCode other) => (h == other.h);
+        public bool Equals(HashCode other) => (Value == other.Value);
 
         public override bool Equals(object obj) => (obj is HashCode hashCode) && Equals(hashCode);
 
-        public override int GetHashCode() => h.GetHashCode();
+        public override int GetHashCode() => Value.GetHashCode();
     }
 
     // ==================================================================

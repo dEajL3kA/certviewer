@@ -70,6 +70,9 @@ namespace CertViewer.Dialogs
         private const int DEFAULT_MAX_INPUT_LENGTH = 16 * 1024 * 1024;
         private const int WM_CLIPBOARDUPDATE = 0x031D;
 
+        private const string VERSION_URL = "https://deajl3ka.github.io/certviewer/api/latest-version.txt";
+        private const string WEBSITE_URL = "https://deajl3ka.github.io/certviewer/";
+
         private static readonly IList<string> SUPPORTED_FILE_TYPES = CollectionUtilities.ReadOnly(new string[] { "pem", "der", "cer", "crt", "p12", "pfx", "jks" });
         private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Select(ext => $"*.{ext}"))}|All Files|*.*");
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
@@ -2077,22 +2080,27 @@ namespace CertViewer.Dialogs
 
         private async void CheckForUpdates()
         {
-            const string VERSION_URL = "https://deajl3ka.github.io/certviewer/api/latest-version.txt";
-            const string WEBSITE_URL = "https://deajl3ka.github.io/certviewer/";
+            const string REGISTRY_VALUE_NAME = "LastUpdateCheck";
             try
             {
-                Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL));
-                if (!ReferenceEquals(versionRemote, null))
+                Tuple<Version, Version, DateTime> versionLocal = GetVersionAndBuildDate();
+                HashCode hashCode = HashCode.Compute($"{versionLocal.Item1}@{GetUnixTimeSeconds() / 3600}");
+                ulong? lastUpdateCheck = ReadRegValue(REGISTRY_VALUE_NAME);
+                if ((!lastUpdateCheck.HasValue) || (lastUpdateCheck.Value != hashCode.Value))
                 {
-                    Tuple<Version, Version, DateTime> versionLocal = GetVersionAndBuildDate();
-                    if (versionRemote.CompareTo(versionLocal.Item1) > 0)
+                    Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL));
+                    if (!ReferenceEquals(versionRemote, null))
                     {
-                        const string message = "A new program version is available!\n\nInstalled version: {0}\nLatest available version: {1}\n\nIt is recommended that you upgrade to the new version. Do you want to download the new version now?";
-                        if (MessageBox.Show(string.Format(message, versionLocal.Item1, versionRemote), "Update Notification", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                        if (versionRemote.CompareTo(versionLocal.Item1) > 0)
                         {
-                            Process.Start(new ProcessStartInfo { FileName = WEBSITE_URL, UseShellExecute = true });
-                            Application.Current.Shutdown();
+                            const string message = "A new program version is available!\n\nInstalled version: {0}\nLatest available version: {1}\n\nIt is recommended that you upgrade to the new version. Do you want to download the new version now?";
+                            if (MessageBox.Show(string.Format(message, versionLocal.Item1, versionRemote), "Update Notification", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                            {
+                                Process.Start(new ProcessStartInfo { FileName = WEBSITE_URL, UseShellExecute = true });
+                                Application.Current.Shutdown();
+                            }
                         }
+                        WriteRegValue(REGISTRY_VALUE_NAME, hashCode.Value);
                     }
                 }
             }
