@@ -453,22 +453,25 @@ namespace CertViewer.Utilities
 
         public static string DownloadFileContents(string url)
         {
+            const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.UserAgent = USER_AGENT_STRING;
+                request.KeepAlive = false;
                 request.CachePolicy = new RequestCachePolicy(RequestCacheLevel.BypassCache);
                 request.Timeout = 12000;
                 request.ReadWriteTimeout = 8000;
                 using (HttpWebResponse response = GetResponseNoThrow(request))
                 {
-                    if (IsHttpSuccess(response.StatusCode))
+                    if (IsSuccess(response.StatusCode))
                     {
                         using (Stream responseStream = response.GetResponseStream())
                         {
                             using (StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8, false))
                             {
                                 string line;
-                                while ((line = streamReader.ReadLine()) != null)
+                                while (!ReferenceEquals(line = streamReader.ReadLine(), null))
                                 {
                                     if (!string.IsNullOrWhiteSpace(line))
                                     {
@@ -501,10 +504,8 @@ namespace CertViewer.Utilities
             return (HttpWebResponse)webResponse;
         }
 
-        private static bool IsHttpSuccess(HttpStatusCode status)
-        {
-            return (status >= HttpStatusCode.OK) && (status < HttpStatusCode.MultipleChoices);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsSuccess(HttpStatusCode status) => (status >= HttpStatusCode.OK) && (status < HttpStatusCode.MultipleChoices);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string DefaultString(string text) => IsNotEmpty(text) ? text : string.Empty;
