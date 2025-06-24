@@ -293,7 +293,7 @@
                 </TabItem>
             </TabControl>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Image Source="{StaticResource ImageSource_ButtonPlus}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,6,0" Cursor="Hand" Style="{StaticResource HotButton}" MouseUp="Image_Instance_MouseUp" ToolTip="Open new instance"/>
+                <Image Source="{StaticResource ImageSource_ButtonPlus}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,5,0" Cursor="Hand" Style="{StaticResource HotButton}" MouseUp="Image_Instance_MouseUp" ToolTip="Open new instance"/>
                 <Image Source="{StaticResource ImageSource_ButtonCert}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,6,0" Cursor="Hand" Style="{StaticResource HotButton}" MouseUp="Image_CertStore_MouseUp" ToolTip="Open certificate from system's X.509 store"/>
                 <Image Source="{StaticResource ImageSource_ButtonHelp}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" Style="{StaticResource HotButton}" MouseUp="Image_About_MouseUp" ToolTip="About..."/>
             </StackPanel>

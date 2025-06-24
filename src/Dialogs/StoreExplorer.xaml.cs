@@ -15,18 +15,18 @@
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
  * OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-using CertViewer.Utilities;
 using System;
-using System.Net.Sockets;
+using System.ComponentModel;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
-using System.Xml.Schema;
+
+using CertViewer.Utilities;
 using static CertViewer.Utilities.Utilities;
 
 namespace CertViewer.Dialogs
@@ -45,6 +45,9 @@ namespace CertViewer.Dialogs
             {
                 ComboBox_StoreNames.Items.Add(storeName);
             }
+            List_Certificates.Items.SortDescriptions.Add(new SortDescription("Subject", ListSortDirection.Ascending));
+            List_Certificates.Items.SortDescriptions.Add(new SortDescription("Issuer", ListSortDirection.Ascending));
+
         }
 
         protected override void OnContentRendered(EventArgs e)
@@ -122,6 +125,7 @@ namespace CertViewer.Dialogs
                     {
                         List_Certificates.Items.Add(certificate);
                     }
+                    CollectionViewSource.GetDefaultView(List_Certificates.Items).Refresh();
                 }
                 if (List_Certificates.Items.Count > 0)
                 {
@@ -142,9 +146,12 @@ namespace CertViewer.Dialogs
             Button_Load.IsEnabled = (e.AddedItems.Count > 0);
         }
 
-        private void List_Certificates_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private void List_Certificates_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            Button_Load_Click(sender, e);
+            if((e.ChangedButton == MouseButton.Left) && (e.ClickCount == 2))
+            {
+                Button_Load_Click(sender, e);
+            }
         }
 
         private void Button_Load_Click(object sender, RoutedEventArgs e)
