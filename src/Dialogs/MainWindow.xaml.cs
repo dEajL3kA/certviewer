@@ -625,11 +625,18 @@ namespace CertViewer.Dialogs
         {
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
-                try
+                StoreExplorer explorerDialog = new StoreExplorer() { Owner = this };
+                if (explorerDialog.ShowDialog().GetValueOrDefault(false))
                 {
-                    Process.Start(new ProcessStartInfo { FileName = "certmgr.msc", UseShellExecute = true });
+                    using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
+                    {
+                        using (MemoryStream stream = new MemoryStream(explorerDialog.SelectedCertificate, false))
+                        {
+                            Title = $"System Store \u2013 {BASE_TITLE}";
+                            ParseCertificateData(stream, busy);
+                        }
+                    }
                 }
-                catch { }
             }
         }
 

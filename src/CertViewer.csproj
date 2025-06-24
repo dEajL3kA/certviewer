@@ -84,6 +84,9 @@
     <Compile Include="Dialogs\ItemSelection.xaml.cs">
       <DependentUpon>ItemSelection.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Dialogs\StoreExplorer.xaml.cs">
+      <DependentUpon>StoreExplorer.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Utilities\Utilities.cs" />
     <Compile Include="Dialogs\WindowEx.cs" />
     <Page Include="Dialogs\AboutDialog.xaml">
@@ -114,6 +117,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\ItemSelection.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\StoreExplorer.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -235,6 +242,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\ico_toolbox.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_certificate_big.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
