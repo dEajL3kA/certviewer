@@ -160,18 +160,21 @@ namespace CertViewer.Dialogs
             }
             try
             {
-                if (EnableUpdateCheck)
+                if (!ParseCommandlineArguments())
                 {
-                    Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(CheckForUpdates));
+                    if (EnableUpdateCheck)
+                    {
+                        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(CheckForUpdates));
+                    }
+                    if (EnableMonitorClipboard)
+                    {
+                        ParseCertificateFromClipboard();
+                    }
                 }
             }
             catch
             {
                 if (IS_DEBUG) throw;
-            }
-            if ((!ParseCliArguments()) && EnableMonitorClipboard)
-            {
-                ParseCertificateFromClipboard();
             }
         }
 
@@ -618,6 +621,18 @@ namespace CertViewer.Dialogs
             }
         }
 
+        private void Image_CertStore_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo { FileName = "certmgr.msc", UseShellExecute = true });
+                }
+                catch { }
+            }
+        }
+
         // ==================================================================
         // Internal Methods
         // ==================================================================
@@ -699,7 +714,7 @@ namespace CertViewer.Dialogs
             }
         }
 
-        private bool ParseCliArguments()
+        private bool ParseCommandlineArguments()
         {
             IList<string> options = new List<string>();
             try
@@ -710,12 +725,13 @@ namespace CertViewer.Dialogs
                     ParseCertificateFile(commandLineArgs);
                     return true;
                 }
+                return options.Contains("--sub-process", StringComparer.OrdinalIgnoreCase);
             }
             catch
             {
                 if (IS_DEBUG) throw;
             }
-            return options.Contains("--sub-process", StringComparer.OrdinalIgnoreCase);
+            return false;
         }
 
         private bool ParseCertificateFromClipboard()
@@ -2084,7 +2100,7 @@ namespace CertViewer.Dialogs
             try
             {
                 Tuple<Version, Version, DateTime> versionLocal = GetVersionAndBuildDate();
-                HashCode hashCode = HashCode.Compute($"{versionLocal.Item1}@{GetUnixTimeSeconds() / 3600}");
+                HashCode hashCode = HashCode.Compute($"{versionLocal.Item1}\\{versionLocal.Item2}\\{GetUnixTimeSeconds() / 3593}");
                 ulong? lastUpdateCheck = ReadRegValue(REGISTRY_VALUE_NAME);
                 if ((!lastUpdateCheck.HasValue) || (lastUpdateCheck.Value != hashCode.Value))
                 {

@@ -40,16 +40,17 @@
         <BitmapImage x:Key="ImageSource_Addresses" UriSource="../Resources/ico_addresses.png"/>
         <BitmapImage x:Key="ImageSource_Authority" UriSource="../Resources/ico_authority.png"/>
         <BitmapImage x:Key="ImageSource_Banner" UriSource="../Resources/banner.png"/>
+        <BitmapImage x:Key="ImageSource_ButtonCert" UriSource="../Resources/ico_toolbox.png"/>
+        <BitmapImage x:Key="ImageSource_ButtonHelp" UriSource="../Resources/ico_help.png"/>
+        <BitmapImage x:Key="ImageSource_ButtonPlus" UriSource="../Resources/ico_plus.png"/>
         <BitmapImage x:Key="ImageSource_Certificate" UriSource="../Resources/ico_certificate.png"/>
         <BitmapImage x:Key="ImageSource_Clipboard" UriSource="../Resources/ico_clipboard.png"/>
         <BitmapImage x:Key="ImageSource_Copy" UriSource="../Resources/ico_copy.png"/>
         <BitmapImage x:Key="ImageSource_Details" UriSource="../Resources/ico_details.png"/>
         <BitmapImage x:Key="ImageSource_Expired" UriSource="../Resources/ico_expired.png"/>
         <BitmapImage x:Key="ImageSource_Extensions" UriSource="../Resources/ico_extensions.png"/>
-        <BitmapImage x:Key="ImageSource_Help" UriSource="../Resources/ico_help.png"/>
         <BitmapImage x:Key="ImageSource_Key" UriSource="../Resources/ico_key.png"/>
         <BitmapImage x:Key="ImageSource_Numbers" UriSource="../Resources/ico_numbers.png"/>
-        <BitmapImage x:Key="ImageSource_Plus" UriSource="../Resources/ico_plus.png"/>
         <BitmapImage x:Key="ImageSource_Report" UriSource="../Resources/ico_report.png"/>
         <BitmapImage x:Key="ImageSource_Settings" UriSource="../Resources/ico_settings.png"/>
         <BitmapImage x:Key="ImageSource_Signature" UriSource="../Resources/ico_signature.png"/>
@@ -292,8 +293,9 @@
                 </TabItem>
             </TabControl>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Image Source="{StaticResource ImageSource_Plus}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,4,0" Cursor="Hand" MouseUp="Image_Instance_MouseUp" Style="{StaticResource HotButton}" ToolTip="Open new instance"/>
-                <Image Source="{StaticResource ImageSource_Help}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" MouseUp="Image_About_MouseUp" Style="{StaticResource HotButton}"  ToolTip="About..."/>
+                <Image Source="{StaticResource ImageSource_ButtonPlus}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,6,0" Cursor="Hand" Style="{StaticResource HotButton}" MouseUp="Image_Instance_MouseUp" ToolTip="Open new instance"/>
+                <Image Source="{StaticResource ImageSource_ButtonCert}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,6,0" Cursor="Hand" Style="{StaticResource HotButton}" MouseUp="Image_CertStore_MouseUp" ToolTip="Open certificate from system's X.509 store"/>
+                <Image Source="{StaticResource ImageSource_ButtonHelp}" Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,0,0" Cursor="Hand" Style="{StaticResource HotButton}" MouseUp="Image_About_MouseUp" ToolTip="About..."/>
             </StackPanel>
         </Grid>
     </DockPanel>
