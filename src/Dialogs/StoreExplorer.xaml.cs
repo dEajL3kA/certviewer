@@ -146,12 +146,9 @@ namespace CertViewer.Dialogs
             Button_Load.IsEnabled = (e.AddedItems.Count > 0);
         }
 
-        private void List_Certificates_MouseDown(object sender, MouseButtonEventArgs e)
+        private void List_Certificates_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if((e.ChangedButton == MouseButton.Left) && (e.ClickCount == 2))
-            {
-                Button_Load_Click(sender, e);
-            }
+            Button_Load_Click(sender, e);
         }
 
         private void Button_Load_Click(object sender, RoutedEventArgs e)

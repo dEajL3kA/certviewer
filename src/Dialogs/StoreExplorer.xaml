@@ -31,7 +31,7 @@
     <Window.Resources>
         <BitmapImage x:Key="ImageSource_CertificateIcon" UriSource="../Resources/ico_certificate_big.png"/>
         <DataTemplate x:Key="Template">
-            <StackPanel Orientation="Horizontal" Margin="0,5,0,5" ToolTip="{Binding}" MouseDown="List_Certificates_MouseDown">
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,5" ToolTip="{Binding}">
                 <Image Source="{StaticResource ImageSource_CertificateIcon}" Width="32" Height="32" Margin="0,0,8,0"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -53,6 +53,9 @@
                 </Grid>
             </StackPanel>
         </DataTemplate>
+        <Style x:Key="MouseDoubleClick" TargetType="{x:Type ListBoxItem}">
+            <EventSetter Event="MouseDoubleClick" Handler="List_Certificates_MouseDoubleClick"/>
+        </Style>
         <local:FontSizeConverter x:Key="FontSize_Smaller" Ratio="0.85"/>
     </Window.Resources>
 
@@ -66,7 +69,7 @@
         <ComboBox DockPanel.Dock="Top" Name="ComboBox_StoreNames" SelectionChanged="ComboBox_StoreNames_SelectionChanged" FontFamily="{StaticResource HackFont}" Padding="5"></ComboBox>
         <Label DockPanel.Dock="Top" Content="Certificates:" FontWeight="SemiBold" Padding="0" Margin="0,8,0,2"></Label>
         <Grid DockPanel.Dock="Top">
-            <ListBox  Name="List_Certificates" FontFamily="{StaticResource HackFont}" FontSize="{Binding FontSize, Converter={StaticResource FontSize_Smaller}, RelativeSource={RelativeSource FindAncestor, AncestorType=Control}}" ItemTemplate="{StaticResource Template}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" SelectionChanged="List_Certificates_SelectionChanged"/>
+            <ListBox Name="List_Certificates" FontFamily="{StaticResource HackFont}" FontSize="{Binding FontSize, Converter={StaticResource FontSize_Smaller}, RelativeSource={RelativeSource FindAncestor, AncestorType=Control}}" ItemTemplate="{StaticResource Template}" ItemContainerStyle="{StaticResource MouseDoubleClick}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" SelectionChanged="List_Certificates_SelectionChanged"/>
             <TextBlock Name="Text_Placeholder" Text="No certificates found in this store!" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="DarkRed" Opacity="0.75" Visibility="Collapsed"/>
         </Grid>
     </DockPanel>
