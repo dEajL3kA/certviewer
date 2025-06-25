@@ -22,7 +22,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CertViewer.Utilities"
         mc:Ignorable="d"
-        Title="Certificate Store" Height="354" Width="640"
+        Title="Certificate Store" Height="400" Width="800"
         WindowStyle="ToolWindow"
         ResizeMode="CanResizeWithGrip"
         ShowInTaskbar="False"
@@ -30,7 +30,14 @@
 
     <Window.Resources>
         <BitmapImage x:Key="ImageSource_CertificateIcon" UriSource="../Resources/ico_certificate_big.png"/>
-        <DataTemplate x:Key="Template">
+        <BitmapImage x:Key="ImageSource_CertStoreIcon" UriSource="../Resources/ico_drawer.png"/>
+        <DataTemplate x:Key="Template_Stores">
+            <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
+                <Image Source="{StaticResource ImageSource_CertStoreIcon}" Width="16" Height="16" Margin="0,0,6,0"/>
+                <TextBlock Text="{Binding}" VerticalAlignment="Center" TextWrapping="NoWrap"/>
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="Template_Certificates">
             <StackPanel Orientation="Horizontal" Margin="0,5,0,5" ToolTip="{Binding}">
                 <Image Source="{StaticResource ImageSource_CertificateIcon}" Width="32" Height="32" Margin="0,0,8,0"/>
                 <Grid>
@@ -44,32 +51,32 @@
                         <RowDefinition Height="auto"></RowDefinition>
                         <RowDefinition Height="auto"></RowDefinition>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="SubjectDN:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Subject}" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="IssuerDN:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Issuer}" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="SerialNo.:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SerialNumber}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Subject DN:" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="NoWrap"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Subject}" VerticalAlignment="Center" TextWrapping="NoWrap"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Issuer DN:" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="NoWrap"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Issuer}" VerticalAlignment="Center"  TextWrapping="NoWrap"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Serial No.:" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="NoWrap"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SerialNumber}" VerticalAlignment="Center" TextWrapping="NoWrap"/>
                 </Grid>
             </StackPanel>
         </DataTemplate>
         <Style x:Key="MouseDoubleClick" TargetType="{x:Type ListBoxItem}">
             <EventSetter Event="MouseDoubleClick" Handler="List_Certificates_MouseDoubleClick"/>
         </Style>
-        <local:FontSizeConverter x:Key="FontSize_Smaller" Ratio="0.85"/>
+        <local:FontSizeConverter x:Key="FontSize_Smaller" Ratio="0.9"/>
     </Window.Resources>
 
     <DockPanel Margin="12,12,12,12" UseLayoutRounding="True" LastChildFill="True">
         <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Margin="0,8,0,0">
-            <Button Name="Button_Cancel" Content="Cancel" DockPanel.Dock="Right" FontWeight="Bold" MinWidth="125" MinHeight="25" Click="Button_Cancel_Click"></Button>
-            <Button Name="Button_Load" Content="Load" DockPanel.Dock="Right" FontWeight="Bold" MinWidth="125" MinHeight="25" Margin="0,0,8,0" Click="Button_Load_Click" IsEnabled="False"></Button>
+            <Button Name="Button_Cancel" Content="Cancel" DockPanel.Dock="Right" FontWeight="Bold" Padding="20,5,20,5" MinWidth="{Binding ElementName=Button_Load, Path=ActualWidth}" Click="Button_Cancel_Click"></Button>
+            <Button Name="Button_Load" Content="Load" DockPanel.Dock="Right" FontWeight="Bold" Padding="20,5,20,5" Margin="0,0,8,0" Click="Button_Load_Click" MinWidth="{Binding ElementName=Button_Cancel, Path=ActualWidth}" IsEnabled="False"></Button>
             <Grid DockPanel.Dock="Left"></Grid>
         </DockPanel>
         <Label DockPanel.Dock="Top" Content="Certificate store:" FontWeight="SemiBold" Padding="0" Margin="0,0,0,2"></Label>
-        <ComboBox DockPanel.Dock="Top" Name="ComboBox_StoreNames" SelectionChanged="ComboBox_StoreNames_SelectionChanged" FontFamily="{StaticResource HackFont}" Padding="5"></ComboBox>
+        <ComboBox DockPanel.Dock="Top" Name="ComboBox_StoreNames" SelectionChanged="ComboBox_StoreNames_SelectionChanged" FontFamily="{StaticResource HackFont}" ItemTemplate="{StaticResource Template_Stores}"></ComboBox>
         <Label DockPanel.Dock="Top" Content="Certificates:" FontWeight="SemiBold" Padding="0" Margin="0,8,0,2"></Label>
         <Grid DockPanel.Dock="Top">
-            <ListBox Name="List_Certificates" FontFamily="{StaticResource HackFont}" FontSize="{Binding FontSize, Converter={StaticResource FontSize_Smaller}, RelativeSource={RelativeSource FindAncestor, AncestorType=Control}}" ItemTemplate="{StaticResource Template}" ItemContainerStyle="{StaticResource MouseDoubleClick}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" SelectionChanged="List_Certificates_SelectionChanged"/>
+            <ListBox Name="List_Certificates" FontFamily="{StaticResource HackFont}" FontSize="{Binding FontSize, Converter={StaticResource FontSize_Smaller}, RelativeSource={RelativeSource FindAncestor, AncestorType=Control}}" ItemTemplate="{StaticResource Template_Certificates}" ItemContainerStyle="{StaticResource MouseDoubleClick}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" SelectionChanged="List_Certificates_SelectionChanged"/>
             <TextBlock Name="Text_Placeholder" Text="No certificates found in this store!" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="DarkRed" Opacity="0.75" Visibility="Collapsed"/>
         </Grid>
     </DockPanel>
