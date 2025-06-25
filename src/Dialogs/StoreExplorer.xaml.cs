@@ -18,6 +18,7 @@
 using System;
 using System.ComponentModel;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -68,6 +69,14 @@ namespace CertViewer.Dialogs
             }
         }
 
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            if (!Button_Cancel.IsEnabled)
+            {
+                e.Cancel = true;
+            }
+        }
+
         private void InitializeCertificateView()
         {
             StoreName storeName;
@@ -86,7 +95,7 @@ namespace CertViewer.Dialogs
         {
             get
             {
-                if (!ReferenceEquals(List_Certificates, null))
+                if (IsNotNull(List_Certificates))
                 {
                     if (List_Certificates.SelectedItem is X509Certificate2 cert)
                     {
@@ -103,42 +112,49 @@ namespace CertViewer.Dialogs
             {
                 if (e.AddedItems[0] is StoreName storeName)
                 {
-                    using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
-                    {
-                        LoadCertificateList(storeName);
-                    }
+                    LoadCertificateList(storeName);
                 }
             }
         }
 
         private async void LoadCertificateList(StoreName storeName)
         {
+            Panel_Buttons.IsEnabled = false;
+            List_Certificates.Items.Clear();
+            Text_Placeholder.Visibility = Visibility.Collapsed;
+            Text_Loading.Visibility = Visibility.Visible;
             try
             {
-                List_Certificates.Items.Clear();
-                Text_Placeholder.Visibility = Visibility.Collapsed;
-                await Task.Yield();
-                using (X509Store store = new X509Store(storeName, StoreLocation.CurrentUser))
+                await DoEvents(Dispatcher);
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
-                    store.Open(OpenFlags.ReadOnly);
-                    foreach (X509Certificate2 certificate in store.Certificates)
+                    using (X509Store store = new X509Store(storeName, StoreLocation.CurrentUser))
                     {
-                        List_Certificates.Items.Add(certificate);
+                        store.Open(OpenFlags.ReadOnly);
+                        foreach (X509Certificate2 certificate in store.Certificates)
+                        {
+                            List_Certificates.Items.Add(certificate);
+                        }
                     }
                     CollectionViewSource.GetDefaultView(List_Certificates.Items).Refresh();
-                }
-                if (List_Certificates.Items.Count > 0)
-                {
-                    List_Certificates.SelectedIndex = 0;
-                    List_Certificates.Focus();
-                    List_Certificates.ScrollIntoView(List_Certificates.SelectedItem);
-                }
-                else
-                {
-                    Text_Placeholder.Visibility = Visibility.Visible;
+                    if (List_Certificates.Items.Count > 0)
+                    {
+                        List_Certificates.SelectedIndex = 0;
+                        List_Certificates.Focus();
+                        List_Certificates.ScrollIntoView(List_Certificates.SelectedItem);
+                    }
+                    else
+                    {
+                        Text_Placeholder.Visibility = Visibility.Visible;
+                    }
                 }
             }
             catch { }
+            finally
+            {
+                Text_Loading.Visibility = Visibility.Collapsed;
+                Panel_Buttons.IsEnabled = true;
+            }
         }
 
         private void List_Certificates_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -153,7 +169,7 @@ namespace CertViewer.Dialogs
 
         private void Button_Load_Click(object sender, RoutedEventArgs e)
         {
-            if (!ReferenceEquals(List_Certificates.SelectedItem, null))
+            if (IsNotNull(List_Certificates.SelectedItem))
             {
                 DialogResult = true;
                 if (ComboBox_StoreNames.SelectedItem is StoreName storeName)

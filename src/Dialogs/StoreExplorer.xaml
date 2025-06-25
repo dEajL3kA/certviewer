@@ -67,7 +67,7 @@
     </Window.Resources>
 
     <DockPanel Margin="12,12,12,12" UseLayoutRounding="True" LastChildFill="True">
-        <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Margin="0,8,0,0">
+        <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Name="Panel_Buttons" Margin="0,8,0,0">
             <Button Name="Button_Cancel" Content="Cancel" DockPanel.Dock="Right" FontWeight="Bold" Padding="20,5,20,5" MinWidth="{Binding ElementName=Button_Load, Path=ActualWidth}" Click="Button_Cancel_Click"></Button>
             <Button Name="Button_Load" Content="Load" DockPanel.Dock="Right" FontWeight="Bold" Padding="20,5,20,5" Margin="0,0,8,0" Click="Button_Load_Click" MinWidth="{Binding ElementName=Button_Cancel, Path=ActualWidth}" IsEnabled="False"></Button>
             <Grid DockPanel.Dock="Left"></Grid>
@@ -78,6 +78,7 @@
         <Grid DockPanel.Dock="Top">
             <ListBox Name="List_Certificates" FontFamily="{StaticResource HackFont}" FontSize="{Binding FontSize, Converter={StaticResource FontSize_Smaller}, RelativeSource={RelativeSource FindAncestor, AncestorType=Control}}" ItemTemplate="{StaticResource Template_Certificates}" ItemContainerStyle="{StaticResource MouseDoubleClick}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="False" SelectionChanged="List_Certificates_SelectionChanged"/>
             <TextBlock Name="Text_Placeholder" Text="No certificates found in this store!" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="DarkRed" Opacity="0.75" Visibility="Collapsed"/>
+            <TextBlock Name="Text_Loading" Text="Loading list of available certificates..." FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="DarkBlue" Opacity="0.75" Visibility="Collapsed"/>
         </Grid>
     </DockPanel>
 </Window>

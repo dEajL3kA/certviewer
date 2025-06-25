@@ -31,6 +31,7 @@ using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -464,7 +465,7 @@ namespace CertViewer.Utilities
                     return (ulong)unixTime;
                 }
             }
-            catch {}
+            catch { }
             return ulong.MinValue;
         }
 
@@ -474,7 +475,7 @@ namespace CertViewer.Utilities
             {
                 using (RegistryKey subkey = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY, false))
                 {
-                    if (!ReferenceEquals(subkey, null))
+                    if (IsNotNull(subkey))
                     {
                         object value = subkey.GetValue(valueName);
                         if (value is int)
@@ -494,7 +495,7 @@ namespace CertViewer.Utilities
             {
                 using (RegistryKey subkey = Registry.CurrentUser.CreateSubKey(REGISTRY_KEY, true))
                 {
-                    if (!ReferenceEquals(subkey, null))
+                    if (IsNotNull(subkey))
                     {
                         subkey.SetValue(valueName, (long)newValue, RegistryValueKind.QWord);
                         return true;
@@ -525,7 +526,7 @@ namespace CertViewer.Utilities
                             using (StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8, false))
                             {
                                 string line;
-                                while (!ReferenceEquals(line = streamReader.ReadLine(), null))
+                                while (IsNotNull(line = streamReader.ReadLine()))
                                 {
                                     if (!string.IsNullOrWhiteSpace(line))
                                     {
@@ -550,7 +551,7 @@ namespace CertViewer.Utilities
             }
             catch (WebException we)
             {
-                if ((we.Status != WebExceptionStatus.ProtocolError) || ReferenceEquals(webResponse = we.Response, null))
+                if ((we.Status != WebExceptionStatus.ProtocolError) || IsNull(webResponse = we.Response))
                 {
                     throw; /*re-throw!*/
                 }
@@ -568,7 +569,10 @@ namespace CertViewer.Utilities
         public static string DefaultString(string text, string defaultString) => IsNotEmpty(text) ? text : defaultString;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotNull(object value) => !ReferenceEquals(value, null);
+        public static bool IsNull(object value) => ReferenceEquals(value, null);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotNull(object value) => !IsNull(value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNotEmpty(byte[] data) => (!ReferenceEquals(data, null)) && (data.Length > 0);
@@ -590,6 +594,12 @@ namespace CertViewer.Utilities
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string TrimToEmpty(string text) => (!ReferenceEquals(text, null)) ? text.Trim() : string.Empty;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static async Task DoEvents(Dispatcher dispatcher) => await dispatcher.InvokeAsync(DoEventsHelper, DispatcherPriority.Render);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void DoEventsHelper() { }
     }
 
     // ==================================================================

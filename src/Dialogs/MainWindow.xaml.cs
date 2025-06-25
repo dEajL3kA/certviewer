@@ -2133,7 +2133,7 @@ namespace CertViewer.Dialogs
                 if ((!lastUpdateCheck.HasValue) || (lastUpdateCheck.Value != hashCode.Value))
                 {
                     Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL));
-                    if (!ReferenceEquals(versionRemote, null))
+                    if (IsNotNull(versionRemote))
                     {
                         if (versionRemote.CompareTo(versionLocal.Item1) > 0)
                         {
