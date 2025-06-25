@@ -28,7 +28,6 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -87,7 +86,6 @@ namespace CertViewer.Dialogs
         private HashCode m_clipbrdHash = HashCode.Empty;
         private ulong m_clipbrdTick = ulong.MaxValue;
         private double m_initialHeight = double.PositiveInfinity;
-        private int m_isPopupDialogShowing = 0;
 
         public X509Certificate Certificate { get; private set; } = null;
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
@@ -100,6 +98,7 @@ namespace CertViewer.Dialogs
         private readonly IDictionary<TabItem, int> m_tabs;
         private readonly ISet<int> m_tabInitialized;
         private readonly DispatcherTimer m_clipbrdTimer;
+        private readonly AtomicSwitch m_isPopupDialogShowing;
 
 #if DEBUG
         private static readonly bool IS_DEBUG = true;
@@ -115,6 +114,7 @@ namespace CertViewer.Dialogs
         {
             m_processId = GetCurrentProcessId();
             InitializeComponent();
+            m_isPopupDialogShowing = new AtomicSwitch();
             m_tabs = ItemsToDictionary<TabItem>(TabControl.Items);
             m_tabInitialized = new HashSet<int>(m_tabs.Count);
             m_clipbrdTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromMilliseconds(25) };
@@ -185,7 +185,7 @@ namespace CertViewer.Dialogs
             switch (msg)
             {
                 case WM_CLIPBOARDUPDATE:
-                    if (IsGuiInitialized && EnableMonitorClipboard && (m_isPopupDialogShowing == 0))
+                    if (IsGuiInitialized && EnableMonitorClipboard && (!m_isPopupDialogShowing))
                     {
                         Restart(m_clipbrdTimer);
                     }
@@ -264,7 +264,7 @@ namespace CertViewer.Dialogs
             m_clipbrdTimer.Stop();
             try
             {
-                if (EnableMonitorClipboard && (m_isPopupDialogShowing == 0) && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
+                if (EnableMonitorClipboard && (!m_isPopupDialogShowing) && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
                 {
                     ParseCertificateFromClipboard();
                 }
@@ -1426,18 +1426,14 @@ namespace CertViewer.Dialogs
 
         private bool? ShowPopup(Func<bool?> showFunction)
         {
-            if (Interlocked.CompareExchange(ref m_isPopupDialogShowing, 1, 0) == 0)
+            try
             {
-                try
+                using (ISwitchGuard guard = m_isPopupDialogShowing.Enter())
                 {
                     return showFunction();
                 }
-                finally
-                {
-                    Interlocked.Exchange(ref m_isPopupDialogShowing, 0);
-                }
             }
-            else
+            catch (InvalidSwitchStateException)
             {
                 return null;
             }

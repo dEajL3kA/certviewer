@@ -778,6 +778,56 @@ namespace CertViewer.Utilities
     }
 
     // ==================================================================
+    // Atomic Switch
+    // ==================================================================
+
+    public interface ISwitchGuard : IDisposable { }
+
+    public class InvalidSwitchStateException : Exception { }
+
+    public class AtomicSwitch
+    {
+        private int m_switchState = 0;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ISwitchGuard Enter()
+        {
+            if (Interlocked.CompareExchange(ref m_switchState, 1, 0) == 0)
+            {
+                return new AtomicSwitchGuard(this);
+            }
+            else
+            {
+                throw new InvalidSwitchStateException();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator bool(AtomicSwitch instance) => instance.m_switchState != 0;
+
+        class AtomicSwitchGuard : ISwitchGuard
+        {
+            private readonly AtomicSwitch m_instance;
+
+            private int m_disposed = 0;
+
+            public AtomicSwitchGuard(AtomicSwitch instance)
+            {
+                m_instance = instance;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Dispose()
+            {
+                if (Interlocked.CompareExchange(ref m_disposed, 1, 0) == 0)
+                {
+                    m_instance.m_switchState = 0;
+                }
+            }
+        }
+    }
+
+    // ==================================================================
     // Native Methods
     // ==================================================================
 
