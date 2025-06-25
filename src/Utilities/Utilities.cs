@@ -231,7 +231,7 @@ namespace CertViewer.Utilities
 
         public static FileStream TryOpenFile(string filePath, FileMode mode, FileAccess access, FileShare share)
         {
-            return DoWithRetry(8, () =>
+            return DoWithRetry(5, () =>
             {
                 return File.Open(filePath, mode, access, share);
             });
@@ -239,7 +239,7 @@ namespace CertViewer.Utilities
 
         public static void TryCopyToClipboard(string text)
         {
-            DoWithRetry(8, () =>
+            DoWithRetry(5, () =>
             {
                 Clipboard.SetText(text);
                 return true;
@@ -248,7 +248,7 @@ namespace CertViewer.Utilities
 
         public static string TryPasteFromClipboard()
         {
-            return DoWithRetry(8, () =>
+            return DoWithRetry(5, () =>
             {
                 return Clipboard.GetText();
             });

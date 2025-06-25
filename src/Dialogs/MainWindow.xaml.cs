@@ -28,6 +28,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -86,6 +87,7 @@ namespace CertViewer.Dialogs
         private HashCode m_clipbrdHash = HashCode.Empty;
         private ulong m_clipbrdTick = ulong.MaxValue;
         private double m_initialHeight = double.PositiveInfinity;
+        private int m_isPopupDialogShowing = 0;
 
         public X509Certificate Certificate { get; private set; } = null;
         public DigestAlgo DigestAlgorithm { get; private set; } = DigestAlgo.SHA256;
@@ -183,7 +185,7 @@ namespace CertViewer.Dialogs
             switch (msg)
             {
                 case WM_CLIPBOARDUPDATE:
-                    if (IsGuiInitialized && EnableMonitorClipboard)
+                    if (IsGuiInitialized && EnableMonitorClipboard && (m_isPopupDialogShowing == 0))
                     {
                         Restart(m_clipbrdTimer);
                     }
@@ -262,7 +264,7 @@ namespace CertViewer.Dialogs
             m_clipbrdTimer.Stop();
             try
             {
-                if (EnableMonitorClipboard && (!OwnedWindows.OfType<UserInputDialog>().Any()) && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
+                if (EnableMonitorClipboard && (m_isPopupDialogShowing == 0) && (GetWindowProcessId(GetClipboardOwner()) != m_processId))
                 {
                     ParseCertificateFromClipboard();
                 }
@@ -565,7 +567,7 @@ namespace CertViewer.Dialogs
             {
                 e.Handled = true;
                 OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = FILE_OPEN_FILTER.Value };
-                if (openFileDialog.ShowDialog(this).GetValueOrDefault(false))
+                if (ShowPopup(() => openFileDialog.ShowDialog(this)).GetValueOrDefault(false))
                 {
                     ParseCertificateFile(openFileDialog.FileName);
                 }
@@ -609,7 +611,7 @@ namespace CertViewer.Dialogs
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
                 AboutDialog aboutDialog = new AboutDialog() { Owner = this };
-                aboutDialog.ShowDialog();
+                ShowPopup(() => aboutDialog.ShowDialog());
             }
         }
 
@@ -626,7 +628,7 @@ namespace CertViewer.Dialogs
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
                 StoreExplorer explorerDialog = new StoreExplorer() { Owner = this };
-                if (explorerDialog.ShowDialog().GetValueOrDefault(false))
+                if (ShowPopup(() => explorerDialog.ShowDialog()).GetValueOrDefault(false))
                 {
                     using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                     {
@@ -1012,7 +1014,7 @@ namespace CertViewer.Dialogs
                     if (retry < MAX_PASSWORD_ATTEMPTS)
                     {
                         PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "PKCS#12 Password" };
-                        if (dialog.ShowDialog(busy).GetValueOrDefault(false))
+                        if (ShowPopup(() => dialog.ShowDialog(busy)).GetValueOrDefault(false))
                         {
                             using (SecureString userProvidedPassword = dialog.Password)
                             {
@@ -1060,7 +1062,7 @@ namespace CertViewer.Dialogs
                     if (retry < MAX_PASSWORD_ATTEMPTS)
                     {
                         PasswordDialog dialog = new PasswordDialog(password, retry + 1U, MAX_PASSWORD_ATTEMPTS) { Owner = this, Title = "JKS Password" };
-                        if (dialog.ShowDialog(busy).GetValueOrDefault(false))
+                        if (ShowPopup(() => dialog.ShowDialog(busy)).GetValueOrDefault(false))
                         {
                             using (SecureString userProvidedPassword = dialog.Password)
                             {
@@ -1088,7 +1090,7 @@ namespace CertViewer.Dialogs
                 if (aliases.Skip(1).Any())
                 {
                     ItemSelection dialog = new ItemSelection(aliases) { Owner = this, Title = "Choose Certificate" };
-                    if (dialog.ShowDialog(busy).GetValueOrDefault(false))
+                    if (ShowPopup(() => dialog.ShowDialog(busy)).GetValueOrDefault(false))
                     {
                         string alias;
                         if (IsNotEmpty(alias = dialog.SelectedItem))
@@ -1120,7 +1122,7 @@ namespace CertViewer.Dialogs
                         if (items.Any())
                         {
                             DetailsView viewer = new DetailsView(ReverseNameOrder ? items.Reverse() : items) { Owner = this, Title = title };
-                            viewer.ShowDialog(busy);
+                            ShowPopup(() => viewer.ShowDialog(busy));
                         }
                     }
                 }
@@ -1191,7 +1193,7 @@ namespace CertViewer.Dialogs
                         if (IS_DEBUG) throw;
                     }
                     DetailsView viewer = new DetailsView(items, CreateAsn1Dump(subjectPublicKeyInfo), CreatePemData("PUBLIC KEY", subjectPublicKeyInfo)) { Owner = this, Title = "Public Key" };
-                    viewer.ShowDialog(busy);
+                    ShowPopup(() => viewer.ShowDialog(busy));
                 }
             }
         }
@@ -1218,7 +1220,7 @@ namespace CertViewer.Dialogs
                         if (IS_DEBUG) throw;
                     }
                     DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Signature" };
-                    viewer.ShowDialog(busy);
+                    ShowPopup(() => viewer.ShowDialog(busy));
                 }
             }
         }
@@ -1235,7 +1237,7 @@ namespace CertViewer.Dialogs
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Key Usage" };
-                        viewer.ShowDialog(busy);
+                        ShowPopup(() => viewer.ShowDialog(busy));
                     }
                 }
             }
@@ -1253,7 +1255,7 @@ namespace CertViewer.Dialogs
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Extended Key Usage" };
-                        viewer.ShowDialog(busy);
+                        ShowPopup(() => viewer.ShowDialog(busy));
                     }
                 }
             }
@@ -1271,7 +1273,7 @@ namespace CertViewer.Dialogs
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items) { Owner = this, Title = "Subject Alternative Names" };
-                        viewer.ShowDialog(busy);
+                        ShowPopup(() => viewer.ShowDialog(busy));
                     }
                 }
             }
@@ -1293,7 +1295,7 @@ namespace CertViewer.Dialogs
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items, CreateAsn1Dump(authorityInformationAccess)) { Owner = this, Title = "Authority Information Access" };
-                        viewer.ShowDialog(busy);
+                        ShowPopup(() => viewer.ShowDialog(busy));
                     }
                 }
             }
@@ -1310,7 +1312,7 @@ namespace CertViewer.Dialogs
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items, CreateAsn1Dump(certificatePolicies)) { Owner = this, Title = "Certificate Policies" };
-                        viewer.ShowDialog(busy);
+                        ShowPopup(() => viewer.ShowDialog(busy));
                     }
                 }
             }
@@ -1334,7 +1336,7 @@ namespace CertViewer.Dialogs
                     if (items.Any())
                     {
                         DetailsView viewer = new DetailsView(items, CreateAsn1Dump(crlDistPoints)) { Owner = this, Title = "CRL Distribution Points" };
-                        viewer.ShowDialog(busy);
+                        ShowPopup(() => viewer.ShowDialog(busy));
                     }
                 }
             }
@@ -1419,6 +1421,25 @@ namespace CertViewer.Dialogs
                 Label_ErrorText.Content = string.Empty;
                 Label_ErrorText.ToolTip = null;
                 Label_ErrorText.Visibility = Visibility.Hidden;
+            }
+        }
+
+        private bool? ShowPopup(Func<bool?> showFunction)
+        {
+            if (Interlocked.CompareExchange(ref m_isPopupDialogShowing, 1, 0) == 0)
+            {
+                try
+                {
+                    return showFunction();
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref m_isPopupDialogShowing, 0);
+                }
+            }
+            else
+            {
+                return null;
             }
         }
 
@@ -2101,7 +2122,7 @@ namespace CertViewer.Dialogs
             return new DerObjectIdentifier(id);
         }
 
-        private async void CheckForUpdates()
+        private static async void CheckForUpdates()
         {
             const string REGISTRY_VALUE_NAME = "LastUpdateCheck";
             try
@@ -2133,7 +2154,7 @@ namespace CertViewer.Dialogs
             }
         }
 
-        private Version CheckForUpdatesTask(string versionUrl)
+        private static Version CheckForUpdatesTask(string versionUrl)
         {
             string updateInfo;
             for (int retry = 0; retry < 5; ++retry)

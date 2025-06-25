@@ -33,10 +33,10 @@ namespace CertViewer.Dialogs
 {
     public partial class StoreExplorer : Window
     {
-        private static readonly object mutex = new object();
-        private static StoreName selectedStoreName = StoreName.My;
+        private static readonly object s_mutex = new object();
+        private static StoreName s_selectedStoreName = StoreName.My;
 
-        private Once hwndInitialized;
+        private Once m_hwndInitialized;
 
         public StoreExplorer()
         {
@@ -52,7 +52,7 @@ namespace CertViewer.Dialogs
 
         protected override void OnContentRendered(EventArgs e)
         {
-            if (hwndInitialized.Execute())
+            if (m_hwndInitialized.Execute())
             {
                 MinWidth = ActualWidth;
                 MinHeight = ActualHeight;
@@ -71,9 +71,9 @@ namespace CertViewer.Dialogs
         private void InitializeCertificateView()
         {
             StoreName storeName;
-            lock (mutex)
+            lock (s_mutex)
             {
-                storeName = selectedStoreName;
+                storeName = s_selectedStoreName;
             }
             try
             {
@@ -158,9 +158,9 @@ namespace CertViewer.Dialogs
                 DialogResult = true;
                 if (ComboBox_StoreNames.SelectedItem is StoreName storeName)
                 {
-                    lock(mutex)
+                    lock(s_mutex)
                     {
-                        selectedStoreName = storeName;
+                        s_selectedStoreName = storeName;
                     }
                 }
                 Close();
