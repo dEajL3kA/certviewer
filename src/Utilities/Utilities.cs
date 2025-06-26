@@ -242,7 +242,7 @@ namespace CertViewer.Utilities
         {
             DoWithRetry(5, () =>
             {
-                Clipboard.SetText(text);
+                Clipboard.SetDataObject(text);
                 return true;
             });
         }
