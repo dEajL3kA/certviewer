@@ -20,7 +20,7 @@ namespace CertViewer.Properties
     internal class MyVersion
     {
         public const string VERSION_MAJOR = "1";
-        public const string VERSION_MINOR = "3";
-        public const string VERSION_PATCH = "1";
+        public const string VERSION_MINOR = "4";
+        public const string VERSION_PATCH = "0";
     }
 }

@@ -816,8 +816,19 @@ namespace CertViewer.Utilities
                 m_instance = instance;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            ~AtomicSwitchGuard()
+            {
+                Dispose(false);
+            }
+
             public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private void Dispose(bool disposing)
             {
                 if (Interlocked.CompareExchange(ref m_disposed, 1, 0) == 0)
                 {

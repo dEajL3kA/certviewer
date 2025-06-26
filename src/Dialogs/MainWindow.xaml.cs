@@ -212,7 +212,7 @@ namespace CertViewer.Dialogs
         {
             try
             {
-                e.Effects = (IsWindowEnabled(new HandleRef(this, Hwnd)) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
+                e.Effects = (IsWindowEnabled(new HandleRef(this, Hwnd)) && (!m_isPopupDialogShowing) && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
             }
             catch
             {
@@ -230,7 +230,7 @@ namespace CertViewer.Dialogs
         {
             try
             {
-                if (IsWindowEnabled(new HandleRef(this, Hwnd)))
+                if (IsWindowEnabled(new HandleRef(this, Hwnd)) && (!m_isPopupDialogShowing) && (e.Effects.HasFlag(DragDropEffects.Copy) || e.Effects.HasFlag(DragDropEffects.Move)))
                 {
                     string[] droppedFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
                     if (IsNotNull(droppedFiles))
