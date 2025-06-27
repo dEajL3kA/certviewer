@@ -34,7 +34,8 @@
         PreviewDragEnter="Window_PreviewDragEnter"
         PreviewDragOver="Window_PreviewDragEnter"
         PreviewDragLeave="Window_PreviewDragLeave"
-        PreviewDrop="Window_PreviewDrop">
+        PreviewDrop="Window_PreviewDrop"
+        PreviewKeyDown="Window_PreviewKeyDown">
 
     <Window.Resources>
         <BitmapImage x:Key="ImageSource_Addresses" UriSource="../Resources/ico_addresses.png"/>

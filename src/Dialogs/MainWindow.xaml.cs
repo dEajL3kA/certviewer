@@ -246,6 +246,28 @@ namespace CertViewer.Dialogs
             e.Handled = true;
         }
 
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (!m_isPopupDialogShowing)
+            {
+                switch (e.Key)
+                {
+                    case Key.F1:
+                        e.Handled = true;
+                        ShowAboutDialog();
+                        break;
+                    case Key.F2:
+                        e.Handled = true;
+                        BrowseCertStore();
+                        break;
+                    case Key.F3:
+                        e.Handled = true;
+                        StartNewInstance();
+                        break;
+                }
+            }
+        }
+
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             int selectedTabIndex = GetValueOrDefault(m_tabs, e.AddedItems.OfType<TabItem>().FirstOrDefault(), int.MaxValue);
@@ -610,16 +632,7 @@ namespace CertViewer.Dialogs
         {
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
-                AboutDialog aboutDialog = new AboutDialog() { Owner = this };
-                ShowPopup(() => aboutDialog.ShowDialog());
-            }
-        }
-
-        private void Image_Instance_MouseUp(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
-            {
-                CreateProcess(GetExeFileName(), "--sub-process");
+                ShowAboutDialog();
             }
         }
 
@@ -627,18 +640,15 @@ namespace CertViewer.Dialogs
         {
             if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
             {
-                StoreExplorer explorerDialog = new StoreExplorer() { Owner = this };
-                if (ShowPopup(() => explorerDialog.ShowDialog()).GetValueOrDefault(false))
-                {
-                    using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
-                    {
-                        using (MemoryStream stream = new MemoryStream(explorerDialog.SelectedCertificate, false))
-                        {
-                            Title = $"System Store \u2013 {BASE_TITLE}";
-                            ParseCertificateData(stream, busy);
-                        }
-                    }
-                }
+                BrowseCertStore();
+            }
+        }
+
+        private void Image_Instance_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton.Equals(MouseButton.Left) && (e.ClickCount > 0))
+            {
+                StartNewInstance();
             }
         }
 
@@ -1337,6 +1347,28 @@ namespace CertViewer.Dialogs
                     {
                         DetailsView viewer = new DetailsView(items, CreateAsn1Dump(crlDistPoints)) { Owner = this, Title = "CRL Distribution Points" };
                         ShowPopup(() => viewer.ShowDialog(busy));
+                    }
+                }
+            }
+        }
+
+        private void ShowAboutDialog()
+        {
+            AboutDialog aboutDialog = new AboutDialog() { Owner = this };
+            ShowPopup(() => aboutDialog.ShowDialog());
+        }
+
+        private void BrowseCertStore()
+        {
+            StoreExplorer explorerDialog = new StoreExplorer() { Owner = this };
+            if (ShowPopup(() => explorerDialog.ShowDialog()).GetValueOrDefault(false))
+            {
+                using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
+                {
+                    using (MemoryStream stream = new MemoryStream(explorerDialog.SelectedCertificate, false))
+                    {
+                        Title = $"System Store \u2013 {BASE_TITLE}";
+                        ParseCertificateData(stream, busy);
                     }
                 }
             }
@@ -2172,6 +2204,11 @@ namespace CertViewer.Dialogs
                 }
             }
             return null;
+        }
+
+        private static void StartNewInstance()
+        {
+            CreateProcess(GetExeFileName(), "--sub-process");
         }
     }
 }
