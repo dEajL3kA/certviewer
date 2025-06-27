@@ -29,8 +29,11 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
-        <BitmapImage x:Key="ImageSource_CertificateIcon" UriSource="../Resources/ico_certificate_big.png"/>
+        <local:BooleanConverter x:Key="BooleanConverter"/>
+        <local:InvBoolConverter x:Key="InvBoolConverter"/>
         <BitmapImage x:Key="ImageSource_CertStoreIcon" UriSource="../Resources/ico_drawer.png"/>
+        <BitmapImage x:Key="ImageSource_CertificateIcon" UriSource="../Resources/ico_certificate_big.png"/>
+        <BitmapImage x:Key="ImageSource_CertKeyPairIcon" UriSource="../Resources/ico_keypair.png"/>
         <DataTemplate x:Key="Template_Stores">
             <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
                 <Image Source="{StaticResource ImageSource_CertStoreIcon}" Width="16" Height="16" Margin="0,0,6,0"/>
@@ -38,27 +41,33 @@
             </StackPanel>
         </DataTemplate>
         <DataTemplate x:Key="Template_Certificates">
-            <StackPanel Orientation="Horizontal" Margin="0,5,0,5" ToolTip="{Binding}">
-                <Image Source="{StaticResource ImageSource_CertificateIcon}" Width="32" Height="32" Margin="0,0,8,0"/>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="auto"></ColumnDefinition>
-                        <ColumnDefinition Width="4"></ColumnDefinition>
-                        <ColumnDefinition Width="*"></ColumnDefinition>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="auto"></RowDefinition>
-                        <RowDefinition Height="auto"></RowDefinition>
-                        <RowDefinition Height="auto"></RowDefinition>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Subject DN:" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="NoWrap"/>
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Subject}" VerticalAlignment="Center" TextWrapping="NoWrap"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Issuer DN:" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="NoWrap"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Issuer}" VerticalAlignment="Center"  TextWrapping="NoWrap"/>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Serial No.:" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="NoWrap"/>
-                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SerialNumber}" VerticalAlignment="Center" TextWrapping="NoWrap"/>
-                </Grid>
-            </StackPanel>
+            <Grid Margin="0,6,0,6" ToolTip="{Binding}" Width="9999">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="auto"></ColumnDefinition>
+                    <ColumnDefinition Width="8"></ColumnDefinition>
+                    <ColumnDefinition Width="auto"></ColumnDefinition>
+                    <ColumnDefinition Width="1"></ColumnDefinition>
+                    <ColumnDefinition Width="auto"></ColumnDefinition>
+                    <ColumnDefinition Width="1"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"></RowDefinition>
+                    <RowDefinition Height="auto"></RowDefinition>
+                    <RowDefinition Height="auto"></RowDefinition>
+                </Grid.RowDefinitions>
+                <Image Grid.Row="0" Grid.Column="0" Grid.RowSpan="3" Name="Icon_Keys" Source="{StaticResource ImageSource_CertKeyPairIcon}" Width="32" Height="32" Visibility="{Binding HasPrivateKey, Converter={StaticResource BooleanConverter}}" ToolTip="You have a private key for this certificate."/>
+                <Image Grid.Row="0" Grid.Column="0" Grid.RowSpan="3" Name="Icon_Cert" Source="{StaticResource ImageSource_CertificateIcon}" Width="32" Height="32" Visibility="{Binding HasPrivateKey, Converter={StaticResource InvBoolConverter}}" ToolTip="You do *not* have the private key for this certificate."/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Subject DN" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="0" Grid.Column="4" Text=":&#160;" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="0" Grid.Column="6" Text="{Binding Subject}" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="NoWrap"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="Issuer DN" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="1" Grid.Column="4" Text=":&#160;" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="1" Grid.Column="6" Text="{Binding Issuer}" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="NoWrap"/>
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="Serial No." VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" FontWeight="SemiBold" TextWrapping="NoWrap"/>
+                <TextBlock Grid.Row="2" Grid.Column="4" Text=":&#160;" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="2" Grid.Column="6" Text="{Binding SerialNumber}" VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+            </Grid>
         </DataTemplate>
         <Style x:Key="MouseDoubleClick" TargetType="{x:Type ListBoxItem}">
             <EventSetter Event="MouseDoubleClick" Handler="List_Certificates_MouseDoubleClick"/>
@@ -68,8 +77,8 @@
 
     <DockPanel Margin="12,12,12,12" UseLayoutRounding="True" LastChildFill="True">
         <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Name="Panel_Buttons" Margin="0,8,0,0">
-            <Button Name="Button_Cancel" Content="Cancel" DockPanel.Dock="Right" FontWeight="Bold" Padding="20,5,20,5" MinWidth="{Binding ElementName=Button_Load, Path=ActualWidth}" Click="Button_Cancel_Click"></Button>
-            <Button Name="Button_Load" Content="Load" DockPanel.Dock="Right" FontWeight="Bold" Padding="20,5,20,5" Margin="0,0,8,0" Click="Button_Load_Click" MinWidth="{Binding ElementName=Button_Cancel, Path=ActualWidth}" IsEnabled="False"></Button>
+            <Button Name="Button_Cancel" Content="Cancel" DockPanel.Dock="Right" FontWeight="Bold" Padding="30,5,30,5" MinWidth="{Binding ElementName=Button_Load, Path=ActualWidth}" Click="Button_Cancel_Click"></Button>
+            <Button Name="Button_Load" Content="Load" DockPanel.Dock="Right" FontWeight="Bold" Padding="30,5,30,5" Margin="0,0,8,0" Click="Button_Load_Click" MinWidth="{Binding ElementName=Button_Cancel, Path=ActualWidth}" IsEnabled="False"></Button>
             <Grid DockPanel.Dock="Left"></Grid>
         </DockPanel>
         <Label DockPanel.Dock="Top" Content="Certificate store:" FontWeight="SemiBold" Padding="0" Margin="0,0,0,2"></Label>

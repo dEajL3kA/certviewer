@@ -839,6 +839,48 @@ namespace CertViewer.Utilities
     }
 
     // ==================================================================
+    // Boolean Converter
+    // ==================================================================
+
+    public class BooleanConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            bool? is_visible = value as bool?;
+            return ToVisibility(is_visible.GetValueOrDefault());
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            Visibility? visibility = value as Visibility?;
+            return FromVisibility(visibility.GetValueOrDefault(Visibility.Collapsed));
+        }
+
+        protected virtual Visibility ToVisibility(bool is_visible)
+        {
+            return is_visible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        protected virtual bool FromVisibility(Visibility visibility)
+        {
+            return visibility == Visibility.Visible;
+        }
+    }
+
+    public class InvBoolConverter : BooleanConverter
+    {
+        protected override Visibility ToVisibility(bool is_visible)
+        {
+            return base.ToVisibility(!is_visible);
+        }
+
+        protected override bool FromVisibility(Visibility visibility)
+        {
+            return !base.FromVisibility(visibility);
+        }
+    }
+
+    // ==================================================================
     // Native Methods
     // ==================================================================
 

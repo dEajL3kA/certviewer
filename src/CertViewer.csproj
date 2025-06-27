@@ -249,5 +249,8 @@
   <ItemGroup>
     <Resource Include="Resources\ico_drawer.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\ico_keypair.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
