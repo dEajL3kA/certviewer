@@ -3,7 +3,7 @@ cd /d "%~dp0"
 
 set MSBUILD_PATH=
 
-for /f "usebackq delims=" %%i in (`etc\utilities\vswhere\vswhere.exe -latest -requires Microsoft.Component.MSBuild Microsoft.Net.Component.4.7.2.TargetingPack Microsoft.Net.ComponentGroup.DevelopmentPrerequisites -find MSBuild\**\Bin\MSBuild.exe`) do (
+for /f "usebackq delims=" %%i in (`etc\utilities\vswhere\vswhere.exe -products * -latest -requires Microsoft.Component.MSBuild Microsoft.Net.Component.4.7.2.TargetingPack Microsoft.Net.ComponentGroup.DevelopmentPrerequisites -find MSBuild\**\Bin\MSBuild.exe`) do (
 	set "MSBUILD_PATH=%%~fi"
 	set "PATH=%%~dpi;%PATH%"
 )
@@ -50,6 +50,10 @@ if not exist "%PANDOC_EXEFILE%" (
 	echo Pandoc executable file not found !!!
 	pause && goto:eof
 )
+
+echo Using MSBuild: %MSBUILD_PATH%"
+echo Using Git: "%GIT_EXEFILE%"
+echo Using Pandoc: "%PANDOC_EXEFILE%"
 
 echo ------------------------------------------------------------------------------
 echo Clean up...
