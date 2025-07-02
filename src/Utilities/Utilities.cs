@@ -881,42 +881,6 @@ namespace CertViewer.Utilities
     }
 
     // ==================================================================
-    // Volatile Enum
-    // ==================================================================
-
-    static class VolatileEx
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T Read<T>(ref T location) where T : struct, Enum
-        {
-            
-            if (Unsafe.SizeOf<T>() == sizeof(uint))
-            {
-                T result = default;
-                Unsafe.As<T, uint>(ref result) = Volatile.Read(ref Unsafe.As<T, uint>(ref location));
-                return result;
-            }
-            else
-            {
-                throw new NotSupportedException("Only underlying type 'int' is allowed!");
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Write<T>(ref T location, T value) where T : struct, Enum
-        {
-            if (Unsafe.SizeOf<T>() == sizeof(uint))
-            {
-                Volatile.Write(ref Unsafe.As<T, uint>(ref location), Unsafe.As<T, uint>(ref value));
-            }
-            else
-            {
-                throw new NotSupportedException("Only underlying type 'int' is allowed!");
-            }
-        }
-    }
-
-    // ==================================================================
     // Native Methods
     // ==================================================================
 
