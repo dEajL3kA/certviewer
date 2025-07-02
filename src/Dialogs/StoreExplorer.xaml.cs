@@ -18,6 +18,7 @@
 using System;
 using System.ComponentModel;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -44,7 +45,7 @@ namespace CertViewer.Dialogs
             List_Certificates.Items.SortDescriptions.Add(new SortDescription("Subject", ListSortDirection.Ascending));
             List_Certificates.Items.SortDescriptions.Add(new SortDescription("Issuer", ListSortDirection.Ascending));
             List_Certificates.Items.SortDescriptions.Add(new SortDescription("SerialNumber", ListSortDirection.Ascending));
-            CheckBox_HideExpiredCerts.IsChecked = !s_showExpiredCerts;
+            CheckBox_HideExpiredCerts.IsChecked = !Volatile.Read(ref s_showExpiredCerts);
         }
 
         protected override void InitializeGui(IntPtr hWnd)
@@ -88,7 +89,7 @@ namespace CertViewer.Dialogs
         {
             try
             {
-                ComboBox_StoreNames.SelectedIndex = ComboBox_StoreNames.Items.IndexOf(s_selectedStoreName);
+                ComboBox_StoreNames.SelectedIndex = ComboBox_StoreNames.Items.IndexOf(VolatileEx.Read(ref s_selectedStoreName));
             }
             catch { }
         }
@@ -182,9 +183,9 @@ namespace CertViewer.Dialogs
                 DialogResult = true;
                 if (ComboBox_StoreNames.SelectedItem is StoreName storeName)
                 {
-                    s_selectedStoreName = storeName;
+                    VolatileEx.Write(ref s_selectedStoreName, storeName);
                 }
-                s_showExpiredCerts = !CheckBox_HideExpiredCerts.IsChecked.GetValueOrDefault();
+                Volatile.Write(ref s_showExpiredCerts, !CheckBox_HideExpiredCerts.IsChecked.GetValueOrDefault());
                 Close();
             }
         }
