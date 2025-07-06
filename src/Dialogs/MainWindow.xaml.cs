@@ -72,6 +72,7 @@ namespace CertViewer.Dialogs
 
         private const string VERSION_URL = "https://deajl3ka.github.io/certviewer/api/latest-version.txt";
         private const string WEBSITE_URL = "https://deajl3ka.github.io/certviewer/";
+        private const string SIGNKEY_PUB = "lM8UzSgruBDnU4fsX8czok5bNgu9UpF0x37jd8KMrs4=";
 
         private static readonly IList<string> SUPPORTED_FILE_TYPES = CollectionUtilities.ReadOnly(new string[] { "pem", "der", "cer", "crt", "p12", "pfx", "jks" });
         private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Select(ext => $"*.{ext}"))}|All Files|*.*");
@@ -2160,7 +2161,7 @@ namespace CertViewer.Dialogs
                 ulong? lastUpdateCheck = ReadRegValue(REGISTRY_VALUE_NAME);
                 if ((!lastUpdateCheck.HasValue) || (lastUpdateCheck.Value != hashCode.Value))
                 {
-                    Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL));
+                    Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL, SIGNKEY_PUB));
                     if (IsNotNull(versionRemote))
                     {
                         if (versionRemote.CompareTo(versionLocal.Item1) > 0)
@@ -2182,19 +2183,22 @@ namespace CertViewer.Dialogs
             }
         }
 
-        private static Version CheckForUpdatesTask(string versionUrl)
+        private static Version CheckForUpdatesTask(string versionUrl, string verificationKey)
         {
-            string updateInfo;
+            Tuple<string, string> updateInfo;
             for (int retry = 0; retry < 5; ++retry)
             {
                 try
                 {
-                    if (!string.IsNullOrEmpty(updateInfo = DownloadFileContents(versionUrl)))
+                    if (IsNotNull(updateInfo = DownloadFileContents(versionUrl)))
                     {
-                        Version version;
-                        if (Version.TryParse(updateInfo, out version))
+                        if (VerifySignature(updateInfo.Item1, updateInfo.Item2, verificationKey))
                         {
-                            return version;
+                            Version version;
+                            if (Version.TryParse(updateInfo.Item1, out version))
+                            {
+                                return version;
+                            }
                         }
                     }
                 }

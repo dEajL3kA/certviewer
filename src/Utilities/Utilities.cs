@@ -41,6 +41,8 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 
 using Org.BouncyCastle.Asn1;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto.Signers;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Utilities;
 using Org.BouncyCastle.Utilities.Collections;
@@ -469,6 +471,22 @@ namespace CertViewer.Utilities
             return ulong.MinValue;
         }
 
+        public static bool VerifySignature(string message, string signature, string verificationKey)
+        {
+            try
+            {
+                byte[] messageData = Encoding.UTF8.GetBytes(message);
+                byte[] signatureData = Convert.FromBase64String(signature);
+                byte[] keyData = Convert.FromBase64String(verificationKey);
+                Ed25519Signer signer = new Ed25519Signer();
+                signer.Init(false, new Ed25519PublicKeyParameters(keyData));
+                signer.BlockUpdate(messageData, 0, messageData.Length);
+                return signer.VerifySignature(signatureData);
+            }
+            catch { }
+            return false;
+        }
+
         public static ulong? ReadRegValue(string valueName)
         {
             try
@@ -506,7 +524,7 @@ namespace CertViewer.Utilities
             return false;
         }
 
-        public static string DownloadFileContents(string url)
+        public static Tuple<string, string> DownloadFileContents(string url)
         {
             const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
             try
@@ -525,12 +543,17 @@ namespace CertViewer.Utilities
                         {
                             using (StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8, false))
                             {
+                                List<string> lines = new List<string>(2);
                                 string line;
                                 while (IsNotNull(line = streamReader.ReadLine()))
                                 {
-                                    if (!string.IsNullOrWhiteSpace(line))
+                                    if (IsNotEmpty(line = line.Normalize().Trim()))
                                     {
-                                        return line.Trim();
+                                        lines.Add(line);
+                                        if (lines.Count >= 2)
+                                        {
+                                            return Tuple.Create(lines[0], lines[1]);
+                                        }
                                     }
                                 }
                             }
@@ -539,7 +562,7 @@ namespace CertViewer.Utilities
                 }
             }
             catch { }
-            return string.Empty;
+            return null;
         }
 
         private static HttpWebResponse GetResponseNoThrow(HttpWebRequest request)
