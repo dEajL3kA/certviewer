@@ -8,14 +8,19 @@
       .link { box-shadow:inset 0px 1px 0px 0px #54a3f7; background:linear-gradient(to bottom, #007dc1 5%, #0061a7 100%); background-color:#007dc1; border-radius:3px; border:1px solid #124d77; display:inline-block; cursor:pointer; color:#ffffff; font-size:1.125em; padding:6px 18px 6px 18px; text-decoration:none; text-shadow:0px 1px 0px #154682; }
       .link:hover { background:linear-gradient(to bottom, #0061a7 5%, #007dc1 100%); background-color:#0061a7; }
       .link:active { position:relative; top:1px; }
+      .semi-bold { font-weight: 600; }
+      #border-frame { border:1px solid black; width: fit-content; block-size: fit-content; padding-left: 3em; padding-right: 3em; padding-top: 1.5em; padding-bottom: 1.5em; }
     </style>
   </head>
   <body>
-    <h1>Imprint</h1>
-    <p>Eric Rothstein<br>Buckower Damm 161<br>12349 Berlin<br>Germany</p>
-    <h2>Contact</h2>
-    <p>E-Mail: Cumpoing79&#64;web.de</p>
-    <br>
-    <p><a href="./" class="link">Back</a></p>
+    <div id="border-frame">
+      <h1>Imprint</h1>
+      <p>Eric Rothstein<br>Buckower Damm 161<br>12349 Berlin<br>Germany</p>
+      <h2>Contact</h2>
+      <p><span class="semi-bold">E-Mail:</span><br>Cumpoing79&#64;web.de</p>
+      <p><span class="semi-bold">OpenPGP key:</span><br>F81B9C6C6C3A7F4641733F5EE9C6473D4E97DAD1</p>
+      <br>
+      <p><a href="./" class="link">Back</a></p>
+    </div>
   </body>
 </html>
