@@ -524,9 +524,80 @@ namespace CertViewer.Utilities
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string DefaultString(string text) => IsNotEmpty(text) ? text : string.Empty;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string DefaultString(string text, string defaultString) => IsNotEmpty(text) ? text : defaultString;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNull(object value) => ReferenceEquals(value, null);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotNull(object value) => !IsNull(value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty(byte[] data) => (!ReferenceEquals(data, null)) && (data.Length > 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty(string text) => !string.IsNullOrEmpty(text);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty(SecureString text) => (!ReferenceEquals(text, null)) && (text.Length > 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty<T>(IList<T> list) => (!ReferenceEquals(list, null)) && (list.Count > 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty(CollectionView view) => (!ReferenceEquals(view, null)) && (view.Count > 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNotEmpty<T>(IEnumerable<T> items) => (!ReferenceEquals(items, null)) && items.Any();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string TrimToEmpty(string text) => (!ReferenceEquals(text, null)) ? text.Trim() : string.Empty;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static async Task DoEvents(Dispatcher dispatcher) => await dispatcher.InvokeAsync(DoEventsHelper, DispatcherPriority.Render);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void DoEventsHelper() { }
+    }
+
+    // ==================================================================
+    // Network Helper
+    // ==================================================================
+
+    public static class SecurityProtocolTypeExt
+    {
+        public const SecurityProtocolType Tls13 = (SecurityProtocolType)12288;
+    }
+
+    public static class HttpNetClient
+    {
+        private const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0";
+
+        static HttpNetClient()
+        {
+            // Workaround to enable support for "modern" TLS versions in older Windows versions (e.g. Windows 7) where they are disabled by default.
+            // This is required, because otherwise the GitHub server will refuse the HTTPS connection!
+            // There exist some registry hacks to change the TLS versions that are enabled by default, but we do *not* want to rely on that method.
+            try
+            {
+                try
+                {
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolTypeExt.Tls13;
+                }
+                catch
+                {
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                }
+            }
+            catch { }
+        }
+
         public static Tuple<string, string> DownloadFileContents(string url)
         {
-            const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
@@ -584,45 +655,6 @@ namespace CertViewer.Utilities
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsSuccess(HttpStatusCode status) => (status >= HttpStatusCode.OK) && (status < HttpStatusCode.MultipleChoices);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string DefaultString(string text) => IsNotEmpty(text) ? text : string.Empty;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string DefaultString(string text, string defaultString) => IsNotEmpty(text) ? text : defaultString;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNull(object value) => ReferenceEquals(value, null);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotNull(object value) => !IsNull(value);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotEmpty(byte[] data) => (!ReferenceEquals(data, null)) && (data.Length > 0);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotEmpty(string text) => !string.IsNullOrEmpty(text);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotEmpty(SecureString text) => (!ReferenceEquals(text, null)) && (text.Length > 0);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotEmpty<T>(IList<T> list) => (!ReferenceEquals(list, null)) && (list.Count > 0);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotEmpty(CollectionView view) => (!ReferenceEquals(view, null)) && (view.Count > 0);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotEmpty<T>(IEnumerable<T> items) => (!ReferenceEquals(items, null)) && items.Any();
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string TrimToEmpty(string text) => (!ReferenceEquals(text, null)) ? text.Trim() : string.Empty;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static async Task DoEvents(Dispatcher dispatcher) => await dispatcher.InvokeAsync(DoEventsHelper, DispatcherPriority.Render);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void DoEventsHelper() { }
     }
 
     // ==================================================================

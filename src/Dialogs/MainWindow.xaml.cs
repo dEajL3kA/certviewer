@@ -58,6 +58,7 @@ using CertViewer.Utilities;
 
 using static CertViewer.Utilities.NativeMethods;
 using static CertViewer.Utilities.Utilities;
+using static CertViewer.Utilities.HttpNetClient;
 
 namespace CertViewer.Dialogs
 {
