@@ -13,11 +13,11 @@
     <style>
       body { font-family: Verdana, Sans-Serif; text-align: center; color: #000000; background-color: #eaf2f8; background: url(images/background.jpg); background-attachment: fixed; background-position:center; background-repeat:no-repeat; background-size:cover; }
       h1, h3 { text-shadow: 0 0 6px #fec9c3; }
-      #screenshot { max-width: 100%; min-width: 640px; height: auto; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); }
+      #screenshot { background-image: url(images/certviewer.png); background-size: cover; width: 1220px; height: 715px; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); }
       #buttons { margin-top: 0.8em; }
       #footer { margin-top: 4em; font-size: 0.7em; font-weight: bold; text-decoration: none; color: #000000; text-shadow: 0 0 6px #fec9c3; line-height: 1.75em; }
       .nowrap { white-space: nowrap; }
-      .link { box-shadow:inset 0px 1px 0px 0px #54a3f7; background:linear-gradient(to bottom, #007dc1 5%, #0061a7 100%); background-color:#007dc1; border-radius:3px; border:1px solid #124d77; display:inline-block; cursor:pointer; color:#ffffff; font-size:1.125em; padding:6px 24px 6px 20px; text-decoration:none; text-shadow:0px 1px 0px #154682; margin-top: 0.8em; }
+      .link { box-shadow: inset 0px 1px 0px 0px #54a3f7; background: linear-gradient(to bottom, #007dc1 5%, #0061a7 100%); background-color:#007dc1; border-radius:3px; border:1px solid #124d77; display:inline-block; cursor:pointer; color:#ffffff; font-size:1.125em; padding:6px 24px 6px 20px; text-decoration:none; text-shadow:0px 1px 0px #154682; margin-top: 0.8em; }
       .link:hover { background:linear-gradient(to bottom, #0061a7 5%, #007dc1 100%); background-color:#0061a7; }
       .link:active { position:relative; top:1px; }
       .icon { margin-right: 10px; }
@@ -26,7 +26,7 @@
       .imprint:hover { color: #8b0000; }
       .separator { opacity: 0.5; margin-left: 3px; margin-right: 3px; }
       @media only screen and (max-width: 1300px) {
-        #screenshot { content:url("images/certviewer-small.png"); min-width: 0px; }
+        #screenshot { background-image: url(images/certviewer-small.png); aspect-ratio: 598 / 547; width: 100%; max-width: 598px; height: auto; }
         .extra-space { margin-left: 4px; }
       }
     </style>
@@ -37,7 +37,7 @@
     <h1>CertViewer</h1>
     <h3>A simple X.509 certificate viewer for Microsoft Windows</h3>
     <h5>Latest version: 1.4.1, released on 2025-07-06</h5>
-    <img src="images/certviewer.png" id="screenshot" alt="CertViewer"><br>
+    <img src="images/image.png" id="screenshot" alt="CertViewer"><br>
     <div id="buttons">
       <a href="https://github.com/dEajL3kA/certviewer/releases/download/1.4.1/CertViewer.2025-07-06.zip" class="link"><i class="fa-solid fa-download icon"></i>Download</a>
       <a href="https://github.com/dEajL3kA/certviewer" class="link extra-space"><i class="fa-brands fa-github icon"></i>Source Code</a>
