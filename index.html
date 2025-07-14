@@ -19,7 +19,7 @@
       #buttons { margin-top: 0.8em; }
       #footer { margin-top: 4em; font-size: 0.7em; font-weight: bold; text-decoration: none; color: #000000; text-shadow: 0 0 6px #fec9c3; line-height: 1.75em; }
       .nowrap { white-space: nowrap; }
-      .link { white-space: nowrap; box-shadow: inset 0px 1px 0px 0px #54a3f7; background: linear-gradient(to bottom, #007dc1 5%, #0061a7 100%); background-color: #007dc1; border-radius: 3px; border: 1px solid #124d77; display: inline-block; cursor: pointer; color: #ffffff; font-size: 1.125em; padding: 6px 24px 6px 20px; text-decoration: none; text-shadow: 0px 1px 0px #154682; margin-top: 1em; }
+      .link { white-space: nowrap; box-shadow: inset 0px 1px 0px 0px #54a3f7; background: linear-gradient(to bottom, #007dc1 5%, #0061a7 100%); background-color: #007dc1; border-radius: 3px; border: 1px solid #124d77; display: inline-block; cursor: pointer; color: #ffffff; font-size: 1.125em; padding: 6px 20px 6px 20px; text-decoration: none; text-shadow: 0px 1px 0px #154682; margin-top: 1em; }
       .link:hover { background:linear-gradient(to bottom, #0061a7 5%, #007dc1 100%); background-color:#0061a7; }
       .link:active { position:relative; top:1px; }
       .icon { margin-right: 10px; }
@@ -34,7 +34,8 @@
       @supports (aspect-ratio: 598 / 547) {
         @media only screen and (max-width: 720px) {
           #screenshot { background-image: url(images/certviewer-small.png); width: 100%; max-width: 598px; height: auto; aspect-ratio: 598 / 547; }
-          .link { font-size: 0.95em; }
+          .link-text { display: none; }
+          .icon { margin-left: 15px; margin-right: 15px; margin-top: 10px; margin-bottom: 10px; }
         }
       }
     </style>
@@ -47,9 +48,9 @@
     <h5>Latest version: 1.4.1, released on 2025-07-06</h5>
     <div id="screenshot" title="CertViewer"></div>
     <div id="buttons">
-      <a href="https://github.com/dEajL3kA/certviewer/releases/download/1.4.1/CertViewer.2025-07-06.zip" class="link"><i class="fa-solid fa-download icon"></i>Download</a>
-      <a href="https://github.com/dEajL3kA/certviewer" class="link extra-space"><i class="fa-brands fa-github icon"></i>Source Code</a>
-      <a href="docs/README.html" class="link extra-space"><i class="fa-solid fa-file-lines icon"></i>Readme</a>
+      <a href="https://github.com/dEajL3kA/certviewer/releases/download/1.4.1/CertViewer.2025-07-06.zip" class="link" title="Download"><i class="fa-solid fa-download icon"></i><span class="link-text">Download</span></a>
+      <a href="https://github.com/dEajL3kA/certviewer" class="link extra-space" title="Source Code"><i class="fa-brands fa-github icon"></i><span class="link-text">Source Code</span></a>
+      <a href="docs/README.html" class="link extra-space" title="Readme"><i class="fa-solid fa-file-lines icon"></i><span class="link-text">Readme</span></a>
     </div>
     <div id="footer">
       <span class="nowrap">Copyright &#169; 2025 &ldquo;dEajL3kA&rdquo; <span class="separator">|</span></span>
