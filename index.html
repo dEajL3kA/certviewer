@@ -27,17 +27,15 @@
       .imprint { color: #000000; }
       .imprint:hover { color: #8b0000; }
       .separator { opacity: 0.5; margin-left: 3px; margin-right: 3px; }
-      @media only screen and (max-width: 1300px) {
+      @media only screen and (max-width: 1360px) {
         #screenshot { background-image: url(images/certviewer-small.png); width: 598px; height: 547px; }
         .link { font-size: 1em; }
       }
-      @media only screen and (max-width: 680px) {
-        #screenshot { background-image: url(images/certviewer-small.png); width: 399px; height: 365px; }
-        .link { font-size: 0.95em; }
-      }
-      @media only screen and (max-width: 480px) {
-        #screenshot { background-image: url(images/certviewer-small.png); width: 299px; height: 274px; }
-        .link { font-size: 0.9em; }
+      @supports (aspect-ratio: 598 / 547) {
+        @media only screen and (max-width: 720px) {
+          #screenshot { background-image: url(images/certviewer-small.png); width: 100%; max-width: 598px; height: auto; aspect-ratio: 598 / 547; }
+          .link { font-size: 0.95em; }
+        }
       }
     </style>
     <link rel="icon" type="image/vnd.microsoft.icon" href="favicon.ico">
