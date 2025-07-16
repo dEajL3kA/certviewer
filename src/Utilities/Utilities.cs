@@ -565,6 +565,30 @@ namespace CertViewer.Utilities
     }
 
     // ==================================================================
+    // Trace Log
+    // ==================================================================
+
+    public class TraceLogger
+    {
+        private readonly string m_loggerName;
+        private static readonly Lazy<BooleanSwitch> TRACING = new Lazy<BooleanSwitch>(() => new BooleanSwitch("Tracing", "Enable optional trace outputs", "False"));
+
+        public TraceLogger(string name)
+        {
+            m_loggerName = string.IsNullOrWhiteSpace(name) ? string.Empty : name;
+        }
+
+        public void WriteLine(FormattableString message)
+        {
+            try
+            {
+                Trace.WriteLineIf(TRACING.Value.Enabled, (FormattableString)$"[{m_loggerName}] {message}");
+            }
+            catch { }
+        }
+    }
+
+    // ==================================================================
     // Network Helper
     // ==================================================================
 
@@ -575,7 +599,8 @@ namespace CertViewer.Utilities
 
     public static class HttpNetClient
     {
-        private const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0";
+        private static readonly TraceLogger logger = new TraceLogger("HttpWebRequest");
+        private const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0";
 
         static HttpNetClient()
         {
@@ -584,20 +609,17 @@ namespace CertViewer.Utilities
             // There exist some registry hacks to change the TLS versions that are enabled by default, but we do *not* want to rely on that method.
             try
             {
-                try
-                {
-                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolTypeExt.Tls13;
-                }
-                catch
-                {
-                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                }
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolTypeExt.Tls13;
             }
-            catch { }
+            catch
+            {
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            }
         }
 
         public static Tuple<string, string> DownloadFileContents(string url)
         {
+            logger.WriteLine($"Request URL: {url}");
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
@@ -608,6 +630,7 @@ namespace CertViewer.Utilities
                 request.ReadWriteTimeout = 8000;
                 using (HttpWebResponse response = GetResponseNoThrow(request))
                 {
+                    logger.WriteLine($"Response status: {response.StatusCode} ({(int)response.StatusCode})");
                     if (IsSuccess(response.StatusCode))
                     {
                         using (Stream responseStream = response.GetResponseStream())
@@ -623,16 +646,21 @@ namespace CertViewer.Utilities
                                         lines.Add(line);
                                         if (lines.Count >= 2)
                                         {
+                                            logger.WriteLine($"Response data received successfully.");
                                             return Tuple.Create(lines[0], lines[1]);
                                         }
                                     }
                                 }
                             }
                         }
+                        logger.WriteLine($"Response is empty or incomplete.");
                     }
                 }
             }
-            catch { }
+            catch (Exception exception)
+            {
+                logger.WriteLine($"Exception: {exception}");
+            }
             return null;
         }
 

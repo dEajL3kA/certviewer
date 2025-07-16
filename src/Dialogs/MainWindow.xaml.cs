@@ -56,9 +56,13 @@ using Org.BouncyCastle.X509.Extension;
 
 using CertViewer.Utilities;
 
+using static CertViewer.Utilities.HttpNetClient;
 using static CertViewer.Utilities.NativeMethods;
 using static CertViewer.Utilities.Utilities;
-using static CertViewer.Utilities.HttpNetClient;
+
+#if DEBUG
+#pragma warning disable CS0162
+#endif
 
 namespace CertViewer.Dialogs
 {
@@ -103,9 +107,9 @@ namespace CertViewer.Dialogs
         private readonly AtomicSwitch m_isPopupDialogShowing;
 
 #if DEBUG
-        private static readonly bool IS_DEBUG = true;
+        private const bool IS_DEBUG = true;
 #else
-        private static readonly bool IS_DEBUG = false;
+        private const bool IS_DEBUG = false;
 #endif
 
         // ==================================================================
@@ -123,10 +127,6 @@ namespace CertViewer.Dialogs
             m_clipbrdTimer.Tick += OnClipboardChanged;
             ShowPlaceholder(true);
             LoadConfigurationSettings();
-            if (IS_DEBUG)
-            {
-                Title += " [DEBUG]";
-            }
         }
 
         // ==================================================================
@@ -2158,24 +2158,41 @@ namespace CertViewer.Dialogs
             try
             {
                 Tuple<Version, Version, DateTime> versionLocal = GetVersionAndBuildDate();
+                TraceLogger logger = new TraceLogger("CheckForUpdate");
                 HashCode hashCode = HashCode.Compute($"{versionLocal.Item1}\\{versionLocal.Item2}\\{GetUnixTimeSeconds() / 3593}");
                 ulong? lastUpdateCheck = ReadRegValue(REGISTRY_VALUE_NAME);
                 if ((!lastUpdateCheck.HasValue) || (lastUpdateCheck.Value != hashCode.Value))
                 {
+                    logger.WriteLine($"Update check is starting...");
                     Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL, SIGNKEY_PUB));
                     if (IsNotNull(versionRemote))
                     {
-                        if (versionRemote.CompareTo(versionLocal.Item1) > 0)
+                        try
                         {
-                            const string message = "A new program version is available!\n\nInstalled version: {0}\nLatest available version: {1}\n\nIt is recommended that you upgrade to the new version. Do you want to download the new version now?";
-                            if (MessageBox.Show(string.Format(message, versionLocal.Item1, versionRemote), "Update Notification", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                            if (versionRemote.CompareTo(versionLocal.Item1) > 0)
                             {
-                                Process.Start(new ProcessStartInfo { FileName = WEBSITE_URL, UseShellExecute = true });
-                                Application.Current.Shutdown();
+                                const string message = "A new program version is available!\n\nInstalled version: {0}\nLatest available version: {1}\n\nIt is recommended that you upgrade to the new version. Do you want to download the new version now?";
+                                logger.WriteLine($"New program version is available: {versionLocal.Item1} -> {versionRemote}");
+                                if (MessageBox.Show(string.Format(message, versionLocal.Item1, versionRemote), "Update Notification", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                                {
+                                    Process.Start(new ProcessStartInfo { FileName = WEBSITE_URL, UseShellExecute = true });
+                                    Application.Current.Shutdown();
+                                }
+                            }
+                            else
+                            {
+                                logger.WriteLine($"The installed program version is up to date -> nothing to do!");
                             }
                         }
-                        WriteRegValue(REGISTRY_VALUE_NAME, hashCode.Value);
+                        finally
+                        {
+                            WriteRegValue(REGISTRY_VALUE_NAME, hashCode.Value);
+                        }
                     }
+                }
+                else
+                {
+                    logger.WriteLine($"Skipping update check this time.");
                 }
             }
             catch
@@ -2186,21 +2203,39 @@ namespace CertViewer.Dialogs
 
         private static Version CheckForUpdatesTask(string versionUrl, string verificationKey)
         {
+            TraceLogger logger = new TraceLogger("ChckUpdateTask");
+            const int MAX_TRIES = 5;
             Tuple<string, string> updateInfo;
-            for (int retry = 0; retry < 5; ++retry)
+            Version version;
+            for (int retry = 0; retry < MAX_TRIES; ++retry)
             {
+                logger.WriteLine($"Downloading update information (attempt {retry+1}/{MAX_TRIES})");
                 try
                 {
                     if (IsNotNull(updateInfo = DownloadFileContents(versionUrl)))
                     {
+                        logger.WriteLine( $"Update information: info=\"{updateInfo.Item1}\", signature=\"{updateInfo.Item2}\"");
                         if (VerifySignature(updateInfo.Item1, updateInfo.Item2, verificationKey))
                         {
-                            Version version;
+                            logger.WriteLine($"Signature is valid.");
                             if (Version.TryParse(updateInfo.Item1, out version))
                             {
+                                logger.WriteLine($"Latest available program version is: {version}");
                                 return version;
                             }
+                            else
+                            {
+                                logger.WriteLine($"Failed to parse version string!");
+                            }
                         }
+                        else
+                        {
+                            logger.WriteLine($"Signature verification has failed -> discarding update information!");
+                        }
+                    }
+                    else
+                    {
+                        logger.WriteLine($"Failed to download update information!");
                     }
                 }
                 catch
