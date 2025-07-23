@@ -568,21 +568,15 @@ namespace CertViewer.Utilities
     // Trace Log
     // ==================================================================
 
-    public class TraceLogger
+    public static class TraceLog
     {
-        private readonly string m_loggerName;
         private static readonly Lazy<BooleanSwitch> TRACING = new Lazy<BooleanSwitch>(() => new BooleanSwitch("Tracing", "Enable optional trace outputs", "False"));
 
-        public TraceLogger(string name)
-        {
-            m_loggerName = string.IsNullOrWhiteSpace(name) ? string.Empty : name;
-        }
-
-        public void WriteLine(FormattableString message)
+        public static void WriteLine(FormattableString message, [CallerMemberName] string callerName = "UnknownFunction")
         {
             try
             {
-                Trace.WriteLineIf(TRACING.Value.Enabled, (FormattableString)$"[{m_loggerName}] {message}");
+                Trace.WriteLineIf(TRACING.Value.Enabled, (FormattableString)$"[{callerName}] {message}");
             }
             catch { }
         }
@@ -599,7 +593,6 @@ namespace CertViewer.Utilities
 
     public static class HttpNetClient
     {
-        private static readonly TraceLogger logger = new TraceLogger("HttpWebRequest");
         private const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0";
 
         static HttpNetClient()
@@ -617,9 +610,9 @@ namespace CertViewer.Utilities
             }
         }
 
-        public static Tuple<string, string> DownloadFileContents(string url)
+        public static Tuple<string, string> DownloadFile(string url)
         {
-            logger.WriteLine($"Request URL: {url}");
+            TraceLog.WriteLine($"Request URL: {url}");
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
@@ -630,7 +623,7 @@ namespace CertViewer.Utilities
                 request.ReadWriteTimeout = 8000;
                 using (HttpWebResponse response = GetResponseNoThrow(request))
                 {
-                    logger.WriteLine($"Response status: {response.StatusCode} ({(int)response.StatusCode})");
+                    TraceLog.WriteLine($"Response status: {response.StatusCode} ({(int)response.StatusCode})");
                     if (IsSuccess(response.StatusCode))
                     {
                         using (Stream responseStream = response.GetResponseStream())
@@ -646,20 +639,20 @@ namespace CertViewer.Utilities
                                         lines.Add(line);
                                         if (lines.Count >= 2)
                                         {
-                                            logger.WriteLine($"Response data received successfully.");
+                                            TraceLog.WriteLine($"Response data received successfully.");
                                             return Tuple.Create(lines[0], lines[1]);
                                         }
                                     }
                                 }
                             }
                         }
-                        logger.WriteLine($"Response is empty or incomplete.");
+                        TraceLog.WriteLine($"Response is empty or incomplete.");
                     }
                 }
             }
             catch (Exception exception)
             {
-                logger.WriteLine($"Exception: {exception}");
+                TraceLog.WriteLine($"Exception: {exception}");
             }
             return null;
         }
