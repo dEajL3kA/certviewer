@@ -602,12 +602,16 @@ namespace CertViewer.Utilities
             // There exist some registry hacks to change the TLS versions that are enabled by default, but we do *not* want to rely on that method.
             try
             {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolTypeExt.Tls13;
+                try
+                {
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolTypeExt.Tls13;
+                }
+                catch
+                {
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                }
             }
-            catch
-            {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            }
+            catch { }
         }
 
         public static Tuple<string, string> DownloadFile(string url)
