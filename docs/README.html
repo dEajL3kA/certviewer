@@ -20,6 +20,70 @@ margin: 0 0.8em 0.2em -1.6em;
 vertical-align: middle;
 }
 .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
 </style>
   <style type="text/css">html {font-family: sans-serif; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }body {margin: 0;}article,aside,details,figcaption,figure,footer,header,hgroup,main,nav,section,summary {display: block;}audio,canvas,progress,video {display: inline-block; vertical-align: baseline; }audio:not([controls]) {display: none;height: 0;}[hidden],template {display: none;}a {background: transparent;}a:active,a:hover {outline: 0;}abbr[title] {border-bottom: 1px dotted;}b,strong {font-weight: bold;}dfn {font-style: italic;}h1 {font-size: 2em;margin: 0.67em 0;}mark {background: #ff0;color: #000;}small {font-size: 80%;}sub,sup {font-size: 75%;line-height: 0;position: relative;vertical-align: baseline;}sup {top: -0.5em;}sub {bottom: -0.25em;}img {border: 0;}svg:not(:root) {overflow: hidden;}figure {margin: 1em 40px;}hr {-moz-box-sizing: content-box;box-sizing: content-box;height: 0;}pre {overflow: auto;}code,kbd,pre,samp {font-family: monospace, monospace;font-size: 1em;}button,input,optgroup,select,textarea {color: inherit; font: inherit; margin: 0; }button {overflow: visible;}button,select {text-transform: none;}button,html input[type="button"], input[type="reset"],input[type="submit"] {-webkit-appearance: button; cursor: pointer; }button[disabled],html input[disabled] {cursor: default;}button::-moz-focus-inner,input::-moz-focus-inner {border: 0;padding: 0;}input {line-height: normal;}input[type="checkbox"],input[type="radio"] {box-sizing: border-box; padding: 0; }input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button {height: auto;}input[type="search"] {-webkit-appearance: textfield; -moz-box-sizing: content-box;-webkit-box-sizing: content-box; box-sizing: content-box;}input[type="search"]::-webkit-search-cancel-button,input[type="search"]::-webkit-search-decoration {-webkit-appearance: none;}fieldset {border: 1px solid #c0c0c0;margin: 0 2px;padding: 0.35em 0.625em 0.75em;}legend {border: 0; padding: 0; }textarea {overflow: auto;}optgroup {font-weight: bold;}table {border-collapse: collapse;border-spacing: 0;}td,th {padding: 0;}.caption {margin-bottom: 5em;}* {box-sizing: border-box;}body {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";font-size: 12pt;line-height: 1.6;margin: auto;max-width: 920px;min-width: 360px;padding: 2rem;word-wrap: break-word;}h1, h2, h3, h4, h5, h6 {font-weight: 600;line-height: 1.25;margin-bottom: 16px;margin-top: 24px;}h1 {padding-bottom: 0.3em;font-size: 2em;border-bottom: 1px solid #eee;}h2 {padding-bottom: 0.3em;font-size: 1.5em;border-bottom: 1px solid #eee;}h3 {font-size: 1.25em;;}h4 {font-size: 1em;}h5 {font-size: 0.875em;}h6 {font-size: 0.85em;color: #777;}h1 tt, h1 code,h2 tt, h2 code,h3 tt, h3 code,h4 tt, h4 code,h5 tt, h5 code,h6 tt, h6 code {font-size: inherit;}body > h2:first-child {margin-top: 0;padding-top: 0;}body > h1:first-child {margin-top: 0;padding-top: 0;}body > h1:first-child+h2 {margin-top: 0;padding-top: 0;}body > h3:first-child,body > h4:first-child,body > h5:first-child,body > h6:first-child {margin-top: 0;padding-top: 0;}a:first-child h1,a:first-child h2,a:first-child h3,a:first-child h4,a:first-child h5,a:first-child h6 {margin-top: 0;padding-top: 0;}a {color: #4078c0;text-decoration: none;}a:active, a:hover {outline: 0;text-decoration: underline;}sup, sub, a.footnote {font-size: 75%;line-height: 0;position: relative;vertical-align: baseline;}sub {bottom: -0.25em;}sup {top: -0.5em;}ol, ul {margin-bottom: 16px;margin-top: 0;padding-left: 2em;}p, blockquote, table, pre {margin: 15px 0;}ul, ol {padding-left: 2em;}ul.no-list, ol.no-list {padding: 0;list-style-type: none;}ul ul, ul ol, ol ol, ol ul {margin-top: 0;margin-bottom: 0;}li > p {margin-top: 16px;}li + li {margin-top: 0.25em;;}ol li ul:first-of-type {margin-top: 0;}hr {background: transparent url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBNYWNpbnRvc2giIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OENDRjNBN0E2NTZBMTFFMEI3QjRBODM4NzJDMjlGNDgiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OENDRjNBN0I2NTZBMTFFMEI3QjRBODM4NzJDMjlGNDgiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo4Q0NGM0E3ODY1NkExMUUwQjdCNEE4Mzg3MkMyOUY0OCIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo4Q0NGM0E3OTY1NkExMUUwQjdCNEE4Mzg3MkMyOUY0OCIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PqqezsUAAAAfSURBVHjaYmRABcYwBiM2QSA4y4hNEKYDQxAEAAIMAHNGAzhkPOlYAAAAAElFTkSuQmCC) repeat-x 0 0;border: 0 none;color: #ccc;height: 4px;margin: 16px 0;padding: 0;}h1 + p,h2 + p,h3 + p,h4 + p,h5 + p,h6 + p,ul li > :first-child,ol li > :first-child {margin-top: 0;}dl {padding: 0;}dl dt {font-size: 1em;font-weight: bold;font-style: italic;padding: 0;margin: 15px 0 5px;}dl dt:first-child {padding: 0;}dl dt > :first-child {margin-top: 0;}dl dt > :last-child {margin-bottom: 0;}dl dd {margin: 0 0 15px;padding: 0 15px;}dl dd > :first-child {margin-top: 0;}dl dd > :last-child {margin-bottom: 0;}blockquote {border-left: 4px solid #DDD;padding: 0 15px;color: #777;}blockquote > :first-child {margin-top: 0;}blockquote > :last-child {margin-bottom: 0;}table {border-collapse: collapse;border-spacing: 0;font-size: 100%;font: inherit;}table th {font-weight: bold;border: 1px solid #ccc;padding: 6px 13px;}table td {border: 1px solid #ccc;padding: 6px 13px;}table td > p:first-child {margin-top: 0;}table td > p:last-child {margin-bottom: 0;}table tr {border-top: 1px solid #ccc;background-color: #fff;}table tr:nth-child(2n) {background-color: #f8f8f8;}img {max-width: 100%;}code, tt {padding: 0;padding-top: 0.2em;padding-bottom: 0.2em;margin: 0;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace;font-size: 10pt;background-color: rgba(0, 0, 0, 0.04);border-radius: 3px;}pre > code {margin: 0;padding: 0;white-space: pre;border: 0;background: transparent;}pre {padding: 16px;margin-top: 0;margin-bottom: 0;background-color: #f8f8f8;font-size: 10pt;line-height: 19px;overflow: auto;border-radius: 3px;}pre code, pre tt {background-color: transparent;border: 0;}code::before, code::after,tt::before, tt::after {letter-spacing: -0.2em;content: "\00a0";}pre code::before, pre code::after, pre tt::before, pre tt::after {content: normal;}code > span.kw { color: #a71d5d; font-weight: normal; } code > span.dt { color: inherit; } code > span.dv { color: #0086b3; } code > span.bn { color: #0086b3; } code > span.fl { color: #0086b3; } code > span.ch { color: #183691; } code > span.st { color: #183691; } code > span.co { color: #969896; font-style: normal; } code > span.ot { color: #a71d5d; } code > span.al { color: #ff0000; } code > span.fu { color: #795da3; } code > span.er { color: #ff0000; font-weight: bold; } code > span.wa { color: #969896; font-weight: bold; font-style: italic; } code > span.cn { color: #880000; } code > span.sc { color: #183691; } code > span.vs { color: #183691; } code > span.ss { color: #bb6688; } code > span.im { } code > span.va { color: #19177c; } code > span.cf { color: #a71d5d; font-weight: normal; } code > span.op { color: #666666; } code > span.bu { } code > span.ex { } code > span.pp { color: #bc7a00; } code > span.at { color: #0086b3; } code > span.do { color: #ba2121; font-style: italic; } code > span.an { color: #969896; font-weight: bold; font-style: italic; } code > span.cv { color: #969896; font-weight: bold; font-style: italic; } code > span.in { color: #969896; font-weight: bold; font-style: italic; } @media print {body {background: #fff;}img, pre, blockquote, table, figure {page-break-inside: avoid;}body {background: #fff;border: 0;}code {background-color: #fff;color: #333!important;padding: 0 .2em;border: 1px solid #dedede;}pre {background: #fff;}pre code {background-color: white!important;overflow: visible;}}@media screen {::selection {background: rgba(157, 193, 200, 0.5);}h1::selection {background-color: rgba(45, 156, 208, 0.3);}h2::selection {background-color: rgba(90, 182, 224, 0.3);}h3::selection, h4::selection, h5::selection, h6::selection, li::selection, ol::selection {background-color: rgba(133, 201, 232, 0.3);}code::selection {background-color: rgba(0, 0, 0, 0.7);color: #eee;}code span::selection {background-color: rgba(0, 0, 0, 0.7)!important;color: #eee!important;}a::selection {background-color: rgba(255, 230, 102, 0.2);}.inverted a::selection {background-color: rgba(255, 230, 102, 0.6);}td::selection, th::selection, caption::selection {background-color: rgba(180, 237, 95, 0.5);}}</style>
 </head>
@@ -46,12 +110,20 @@ KeyStore)</a> format, including password-protected files.</p>
 Framework 4.7.2</a> or later is required!</p>
 <p>It is already included in Windows 10 v1803 (April 2018 Update) or
 later, and <em>all</em> versions of Windows 11.</p>
-<h1 id="program-settings">Program settings</h1>
-<p>The initial program settings can be adjusted in the
+<h2 id="configuration">Configuration</h2>
+<p>The program settings can be adjusted in the
 <strong><code>CertViewer.exe.config</code></strong> configuration
-file.</p>
-<p>All settings are specified in the
-<strong><code>/configuration/appSettings</code></strong> section:</p>
+file:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode xml"><code class="sourceCode xml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">configuration</span>&gt;</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    …</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">appSettings</span>&gt;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">add</span><span class="ot"> key=</span><span class="st">&quot;SettingName1&quot;</span><span class="ot"> value=</span><span class="st">&quot;SettingValue1&quot;</span> /&gt;</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">add</span><span class="ot"> key=</span><span class="st">&quot;SettingName2&quot;</span><span class="ot"> value=</span><span class="st">&quot;SettingValue2&quot;</span> /&gt;</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        …</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">appSettings</span>&gt;</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">configuration</span>&gt;</span></code></pre></div>
+<h3 id="settings">Settings</h3>
+<p>The following program settings are currently supported:</p>
 <ul>
 <li><p><strong><code>DigestAlgorithm</code></strong><br />
 The digest algorithm to be used for “fingerprint” computation. Default
@@ -74,9 +146,23 @@ RFC 2253). Default value: <code>True</code>.</p></li>
 Keep the CertViewer window on top of all other windows. Default value:
 <code>True</code>.</p></li>
 <li><p><strong><code>EnableUpdateCheck</code></strong><br />
-Automatically check for new program versions at startup. Default value:
-<code>True</code>.</p></li>
+Automatically check for new program versions at application startup.
+Default value: <code>True</code>.</p></li>
 </ul>
+<h2 id="logging">Logging</h2>
+<p>Optional <a href="https://en.wikipedia.org/wiki/Tracing_(software)">tracing</a> can
+be enabled in the <strong><code>CertViewer.exe.config</code></strong>
+configuration file:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode xml"><code class="sourceCode xml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">configuration</span>&gt;</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    …</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">system.diagnostics</span>&gt;</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        &lt;<span class="kw">switches</span>&gt;</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>            &lt;<span class="kw">add</span><span class="ot"> name=</span><span class="st">&quot;Tracing&quot;</span><span class="ot"> value=</span><span class="st">&quot;True&quot;</span> /&gt;</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        &lt;/<span class="kw">switches</span>&gt;</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    &lt;/<span class="kw">system.diagnostics</span>&gt;</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">configuration</span>&gt;</span></code></pre></div>
+<p>You can use a program like Sysinternals <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/debugview"><strong><code>DebugView</code></strong></a>
+to display the tracing messages generated by CertViewer.</p>
 <h2 id="website">Website</h2>
 <p>For news and updates, please check the official project website
 at:<br />
