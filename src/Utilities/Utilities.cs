@@ -86,6 +86,11 @@ namespace CertViewer.Utilities
             }
         }
 
+        public static Lazy<IList<T>> ReadOnlyList<T>(params T[] items)
+        {
+            return new Lazy<IList<T>>(() => CollectionUtilities.ReadOnly(items));
+        }
+
         public static IDictionary<T, int> ItemsToDictionary<T>(ItemCollection items)
         {
             int index = 0;
@@ -593,7 +598,7 @@ namespace CertViewer.Utilities
 
     public static class HttpNetClient
     {
-        private const string USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0";
+        private const string USER_AGENT_STRING = "curl/8.15.0";
 
         static HttpNetClient()
         {

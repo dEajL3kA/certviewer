@@ -75,16 +75,17 @@ namespace CertViewer.Dialogs
         private const int DEFAULT_MAX_INPUT_LENGTH = 16 * 1024 * 1024;
         private const int WM_CLIPBOARDUPDATE = 0x031D;
 
-        private const string VERSION_URL = "https://deajl3ka.github.io/certviewer/api/latest-version.txt";
         private const string WEBSITE_URL = "https://deajl3ka.github.io/certviewer/";
+        private const string VERSION_URL = "/api/latest-version.txt";
         private const string SIGNKEY_PUB = "lM8UzSgruBDnU4fsX8czok5bNgu9UpF0x37jd8KMrs4=";
 
-        private static readonly IList<string> SUPPORTED_FILE_TYPES = CollectionUtilities.ReadOnly(new string[] { "pem", "der", "cer", "crt", "p12", "pfx", "jks" });
-        private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Select(ext => $"*.{ext}"))}|All Files|*.*");
+        private static readonly Lazy<IList<string>> UPDATE_SITES = ReadOnlyList("https://deajl3ka.github.io/certviewer", "https://codeberg.org/dEajL3kA/CertViewer/raw/branch/website", "https://gitlab.com/deajl3ka1/CertViewer/-/raw/website");
+        private static readonly Lazy<IList<string>> SUPPORTED_FILE_TYPES = ReadOnlyList("pem", "der", "cer", "crt", "p12", "pfx", "jks");
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> EXT_KEY_USAGE = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_ExtKeyUsage);
         private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> AUTH_INFO_ACCESS = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_AuthInfoAccess);
         private static readonly Lazy<IDictionary<ECCurve, string>> ECC_CURVE_NAMES = new Lazy<IDictionary<ECCurve, string>>(CreateLookup_EccCurveNames);
+        private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Value.Select(ext => $"*.{ext}"))}|All Files|*.*");
 
         private static readonly Lazy<Regex> PEM_CERTIFICATE = new Lazy<Regex>(() => new Regex(@"-{3,}?\s*BEGIN\s+CERTIFICATE\s*-{3,}([\t\n\v\f\r\x20-\x7E]+?)-{3,}\s*END\s+CERTIFICATE\s*-{3,}?", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
         private static readonly Lazy<Regex> INVALID_BASE64_CHARS = new Lazy<Regex>(() => new Regex(@"[^A-Za-z0-9+/]+", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
@@ -2163,7 +2164,7 @@ namespace CertViewer.Dialogs
                 if ((!lastUpdateCheck.HasValue) || (lastUpdateCheck.Value != hashCode.Value))
                 {
                     TraceLog.WriteLine($"Update check is starting...");
-                    Version versionRemote = await Task.Run(() => CheckForUpdatesTask(VERSION_URL, SIGNKEY_PUB));
+                    Version versionRemote = await Task.Run(() => CheckForUpdatesTask(UPDATE_SITES.Value, VERSION_URL, SIGNKEY_PUB));
                     if (versionRemote.CompareTo(versionLocal.Item1) > 0)
                     {
                         const string message = "A new program version is available!\n\nInstalled version: {0}\nLatest available version: {1}\n\nIt is recommended that you upgrade to the new version. Do you want to download the new version now?";
@@ -2194,45 +2195,49 @@ namespace CertViewer.Dialogs
             }
         }
 
-        private static Version CheckForUpdatesTask(string versionUrl, string verificationKey)
+        private static Version CheckForUpdatesTask(IEnumerable<string> updateSites, string versionUrl, string verificationKey)
         {
             const int MAX_TRIES = 5;
+            int numberOfSites = updateSites.Count();
             Tuple<string, string> updateInfo;
             Version version;
-            for (int retry = 0; retry < MAX_TRIES; ++retry)
+            foreach (Tuple<int, string> currentUrl in updateSites.Select((url, index) => Tuple.Create(index, string.Concat(url, versionUrl))))
             {
-                TraceLog.WriteLine($"Downloading update information (attempt {retry+1}/{MAX_TRIES})");
-                try
+                for (int retry = 0; retry < MAX_TRIES; ++retry)
                 {
-                    if (IsNotNull(updateInfo = DownloadFile(versionUrl)))
+                    TraceLog.WriteLine($"Downloading update information (site: {currentUrl.Item1 + 1}/{numberOfSites}, attempt: {retry + 1}/{MAX_TRIES})");
+                    try
                     {
-                        TraceLog.WriteLine( $"Update information: info=\"{updateInfo.Item1}\", signature=\"{updateInfo.Item2}\"");
-                        if (VerifySignature(updateInfo.Item1, updateInfo.Item2, verificationKey))
+                        if (IsNotNull(updateInfo = DownloadFile(currentUrl.Item2)))
                         {
-                            TraceLog.WriteLine($"Signature is valid.");
-                            if (Version.TryParse(updateInfo.Item1, out version))
+                            TraceLog.WriteLine($"Update information: info=\"{updateInfo.Item1}\", signature=\"{updateInfo.Item2}\"");
+                            if (VerifySignature(updateInfo.Item1, updateInfo.Item2, verificationKey))
                             {
-                                TraceLog.WriteLine($"Latest available program version is: {version}");
-                                return version;
+                                TraceLog.WriteLine($"Signature is valid.");
+                                if (Version.TryParse(updateInfo.Item1, out version))
+                                {
+                                    TraceLog.WriteLine($"Latest available program version is: {version}");
+                                    return version;
+                                }
+                                else
+                                {
+                                    TraceLog.WriteLine($"Failed to parse version string!");
+                                }
                             }
                             else
                             {
-                                TraceLog.WriteLine($"Failed to parse version string!");
+                                TraceLog.WriteLine($"Signature verification has failed -> discarding update information!");
                             }
                         }
                         else
                         {
-                            TraceLog.WriteLine($"Signature verification has failed -> discarding update information!");
+                            TraceLog.WriteLine($"Failed to download update information!");
                         }
                     }
-                    else
+                    catch
                     {
-                        TraceLog.WriteLine($"Failed to download update information!");
+                        if (IS_DEBUG) throw;
                     }
-                }
-                catch
-                {
-                    if (IS_DEBUG) throw;
                 }
             }
             return new Version();
