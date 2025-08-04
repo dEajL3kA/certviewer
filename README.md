@@ -97,6 +97,7 @@ For news and updates, please check the official project website at:
 **Git mirrors:**
 
 * <https://github.com/dEajL3kA/certviewer>
+* <https://codeberg.org/dEajL3kA/CertViewer>
 * <https://gitlab.com/deajl3ka1/CertViewer>
 * <https://repo.or.cz/certviewer.git>
 
