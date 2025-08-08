@@ -17,6 +17,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
@@ -45,7 +46,6 @@ using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Signers;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Utilities;
-using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.Utilities.Encoders;
 using Org.BouncyCastle.Utilities.IO;
 
@@ -86,15 +86,15 @@ namespace CertViewer.Utilities
             }
         }
 
-        public static Lazy<IList<T>> ReadOnlyList<T>(params T[] items)
+        public static IReadOnlyList<T> ReadOnlyList<T>(params T[] items)
         {
-            return new Lazy<IList<T>>(() => CollectionUtilities.ReadOnly(items));
+            return new List<T>(items).AsReadOnly();
         }
 
-        public static IDictionary<T, int> ItemsToDictionary<T>(ItemCollection items)
+        public static IReadOnlyDictionary<T, int> ItemsToDictionary<T>(ItemCollection items)
         {
             int index = 0;
-            return CollectionUtilities.ReadOnly(items.OfType<T>().ToDictionary(item => item, item => index++));
+            return new ReadOnlyDictionary<T, int>(items.OfType<T>().ToDictionary(item => item, item => index++));
         }
 
         public static Tuple<Version, Version, DateTime> GetVersionAndBuildDate()
@@ -393,7 +393,7 @@ namespace CertViewer.Utilities
             return false;
         }
 
-        public static TValue GetValueOrDefault<TKey, TValue>(IDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue)
+        public static TValue GetValueOrDefault<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue)
         {
             if (IsNotNull(dictionary) && IsNotNull(key))
             {

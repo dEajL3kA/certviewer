@@ -33,7 +33,7 @@ namespace CertViewer.Dialogs
     {
         private bool m_scrollbar = false, m_resizeEnabled = false;
 
-        private readonly IDictionary<TabItem, int> m_tabs;
+        private readonly IReadOnlyDictionary<TabItem, int> m_tabs;
         private readonly ISet<TabItem> m_tabInitialized;
         private readonly IEnumerable<KeyValuePair<string, string>> m_items;
         private readonly string m_asn1Data, m_pemData;

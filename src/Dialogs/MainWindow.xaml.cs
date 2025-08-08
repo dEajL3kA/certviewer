@@ -79,13 +79,14 @@ namespace CertViewer.Dialogs
         private const string VERSION_URL = "/api/latest-version.txt";
         private const string SIGNKEY_PUB = "lM8UzSgruBDnU4fsX8czok5bNgu9UpF0x37jd8KMrs4=";
 
-        private static readonly Lazy<IList<string>> UPDATE_SITES = ReadOnlyList("https://deajl3ka.github.io/certviewer", "https://codeberg.org/dEajL3kA/CertViewer/raw/branch/website", "https://gitlab.com/deajl3ka1/CertViewer/-/raw/website");
-        private static readonly Lazy<IList<string>> SUPPORTED_FILE_TYPES = ReadOnlyList("pem", "der", "cer", "crt", "p12", "pfx", "jks");
-        private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
-        private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> EXT_KEY_USAGE = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_ExtKeyUsage);
-        private static readonly Lazy<IDictionary<DerObjectIdentifier, string>> AUTH_INFO_ACCESS = new Lazy<IDictionary<DerObjectIdentifier, string>>(CreateLookup_AuthInfoAccess);
-        private static readonly Lazy<IDictionary<ECCurve, string>> ECC_CURVE_NAMES = new Lazy<IDictionary<ECCurve, string>>(CreateLookup_EccCurveNames);
-        private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Value.Select(ext => $"*.{ext}"))}|All Files|*.*");
+        private static readonly IReadOnlyList<string> UPDATE_SITES = ReadOnlyList("https://deajl3ka.github.io/certviewer", "https://codeberg.org/dEajL3kA/CertViewer/raw/branch/website", "https://gitlab.com/deajl3ka1/CertViewer/-/raw/website");
+        private static readonly IReadOnlyList<string> SUPPORTED_FILE_TYPES = ReadOnlyList("pem", "der", "cer", "crt", "p12", "pfx", "jks");
+
+        private static readonly Lazy<ReadOnlyDictionary<DerObjectIdentifier, string>> X509_NAME_ATTRIBUTES = new Lazy<ReadOnlyDictionary<DerObjectIdentifier, string>>(CreateLookup_NameAttributes);
+        private static readonly Lazy<ReadOnlyDictionary<DerObjectIdentifier, string>> EXT_KEY_USAGE = new Lazy<ReadOnlyDictionary<DerObjectIdentifier, string>>(CreateLookup_ExtKeyUsage);
+        private static readonly Lazy<ReadOnlyDictionary<DerObjectIdentifier, string>> AUTH_INFO_ACCESS = new Lazy<ReadOnlyDictionary<DerObjectIdentifier, string>>(CreateLookup_AuthInfoAccess);
+        private static readonly Lazy<ReadOnlyDictionary<ECCurve, string>> ECC_CURVE_NAMES = new Lazy<ReadOnlyDictionary<ECCurve, string>>(CreateLookup_EccCurveNames);
+        private static readonly Lazy<string> FILE_OPEN_FILTER = new Lazy<string>(() => $"Certificate Files|{string.Join(";", SUPPORTED_FILE_TYPES.Select(ext => $"*.{ext}"))}|All Files|*.*");
 
         private static readonly Lazy<Regex> PEM_CERTIFICATE = new Lazy<Regex>(() => new Regex(@"-{3,}?\s*BEGIN\s+CERTIFICATE\s*-{3,}([\t\n\v\f\r\x20-\x7E]+?)-{3,}\s*END\s+CERTIFICATE\s*-{3,}?", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
         private static readonly Lazy<Regex> INVALID_BASE64_CHARS = new Lazy<Regex>(() => new Regex(@"[^A-Za-z0-9+/]+", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled));
@@ -102,7 +103,7 @@ namespace CertViewer.Dialogs
         public bool EnableUpdateCheck { get; private set; } = true;
 
         private readonly uint m_processId;
-        private readonly IDictionary<TabItem, int> m_tabs;
+        private readonly IReadOnlyDictionary<TabItem, int> m_tabs;
         private readonly ISet<int> m_tabInitialized;
         private readonly DispatcherTimer m_clipbrdTimer;
         private readonly AtomicSwitch m_isPopupDialogShowing;
@@ -1129,7 +1130,7 @@ namespace CertViewer.Dialogs
                     IList<string> valList = name.GetValueList();
                     if (IsNotEmpty(oidList) && IsNotEmpty(valList))
                     {
-                        IDictionary<DerObjectIdentifier, string> oidSymbols = X509_NAME_ATTRIBUTES.Value;
+                        IReadOnlyDictionary<DerObjectIdentifier, string> oidSymbols = X509_NAME_ATTRIBUTES.Value;
                         IEnumerable<KeyValuePair<string, string>> items = oidList.Select(oid => GetValueOrDefault(oidSymbols, oid, oid.Id))
                                 .Zip(valList, (key, value) => new KeyValuePair<string, string>(key, value));
                         if (items.Any())
@@ -1262,7 +1263,7 @@ namespace CertViewer.Dialogs
             {
                 using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
-                    IDictionary<DerObjectIdentifier, string> lookup = EXT_KEY_USAGE.Value;
+                    IReadOnlyDictionary<DerObjectIdentifier, string> lookup = EXT_KEY_USAGE.Value;
                     IEnumerable<KeyValuePair<string, string>> items = extKeyUsage.Select(oid => GetValueOrDefault(lookup, oid, oid.Id))
                         .Select(item => new KeyValuePair<string, string>("extKeyUsage", item));
                     if (items.Any())
@@ -1298,7 +1299,7 @@ namespace CertViewer.Dialogs
             {
                 using (OverrideCursor busy = new OverrideCursor(Cursors.Wait))
                 {
-                    IDictionary<DerObjectIdentifier, string> method = AUTH_INFO_ACCESS.Value;
+                    IReadOnlyDictionary<DerObjectIdentifier, string> method = AUTH_INFO_ACCESS.Value;
                     IEnumerable<KeyValuePair<string, string>> items = authorityInformationAccess.GetAccessDescriptions()
                         .Select(descr => Tuple.Create(GetValueOrDefault(method, descr.AccessMethod, string.Empty), descr.AccessLocation))
                         .Where(descr => IsNotEmpty(descr.Item1) && IsNotNull(descr.Item2))
@@ -1478,16 +1479,16 @@ namespace CertViewer.Dialogs
         // Utility Methods
         // ==================================================================
 
-        private static IDictionary<DerObjectIdentifier, string> CreateLookup_NameAttributes()
+        private static ReadOnlyDictionary<DerObjectIdentifier, string> CreateLookup_NameAttributes()
         {
             Dictionary<DerObjectIdentifier, string> builder = new Dictionary<DerObjectIdentifier, string>(X509Name.DefaultSymbols)
             {
                 { X509Name.DmdName, "dmdName" },
             };
-            return CollectionUtilities.ReadOnly(builder);
+            return new ReadOnlyDictionary<DerObjectIdentifier, string>(builder);
         }
 
-        private static IDictionary<DerObjectIdentifier, string> CreateLookup_ExtKeyUsage()
+        private static ReadOnlyDictionary<DerObjectIdentifier, string> CreateLookup_ExtKeyUsage()
         {
             Dictionary<DerObjectIdentifier, string> builder = new Dictionary<DerObjectIdentifier, string>
             {
@@ -1539,7 +1540,7 @@ namespace CertViewer.Dialogs
             return new ReadOnlyDictionary<DerObjectIdentifier, string>(builder);
         }
 
-        private static IDictionary<DerObjectIdentifier, string> CreateLookup_AuthInfoAccess()
+        private static ReadOnlyDictionary<DerObjectIdentifier, string> CreateLookup_AuthInfoAccess()
         {
             Dictionary<DerObjectIdentifier, string> builder = new Dictionary<DerObjectIdentifier, string>
             {
@@ -1549,7 +1550,7 @@ namespace CertViewer.Dialogs
             return new ReadOnlyDictionary<DerObjectIdentifier, string>(builder);
         }
 
-        private static IDictionary<ECCurve, string> CreateLookup_EccCurveNames()
+        private static ReadOnlyDictionary<ECCurve, string> CreateLookup_EccCurveNames()
         {
             Dictionary<ECCurve, string> builder = new Dictionary<ECCurve, string>();
             foreach (KeyValuePair<ECCurve, string> entry in ECNamedCurveTable.Names
@@ -1668,7 +1669,7 @@ namespace CertViewer.Dialogs
             {
                 try
                 {
-                    IDictionary<DerObjectIdentifier, string> lookup = EXT_KEY_USAGE.Value;
+                    IReadOnlyDictionary<DerObjectIdentifier, string> lookup = EXT_KEY_USAGE.Value;
                     StringBuilder sb = new StringBuilder();
                     foreach (string extKeyUsage in extendedKeyUsage.Select(oid => GetValueOrDefault(lookup, oid, oid.Id)))
                     {
@@ -2066,6 +2067,7 @@ namespace CertViewer.Dialogs
             {
                 try
                 {
+                    MessageBox.Show("Yeah!");
                     string value;
                     if (IsNotEmpty(value = name.ToString(reverse, X509_NAME_ATTRIBUTES.Value)))
                     {
@@ -2164,7 +2166,7 @@ namespace CertViewer.Dialogs
                 if ((!lastUpdateCheck.HasValue) || (lastUpdateCheck.Value != hashCode.Value))
                 {
                     TraceLog.WriteLine($"Update check is starting...");
-                    Version versionRemote = await Task.Run(() => CheckForUpdatesTask(UPDATE_SITES.Value, VERSION_URL, SIGNKEY_PUB));
+                    Version versionRemote = await Task.Run(() => CheckForUpdatesTask(UPDATE_SITES, VERSION_URL, SIGNKEY_PUB));
                     if (versionRemote.CompareTo(versionLocal.Item1) > 0)
                     {
                         const string message = "A new program version is available!\n\nInstalled version: {0}\nLatest available version: {1}\n\nIt is recommended that you upgrade to the new version. Do you want to download the new version now?";
@@ -2195,17 +2197,15 @@ namespace CertViewer.Dialogs
             }
         }
 
-        private static Version CheckForUpdatesTask(IEnumerable<string> updateSites, string versionUrl, string verificationKey)
+        private static Version CheckForUpdatesTask(IReadOnlyList<string> updateSites, string versionUrl, string verificationKey)
         {
             const int MAX_TRIES = 5;
-            int numberOfSites = updateSites.Count();
             Tuple<string, string> updateInfo;
-            Version version;
-            foreach (Tuple<int, string> currentUrl in updateSites.Select((url, index) => Tuple.Create(index, string.Concat(url, versionUrl))))
+            for (int retry = 0; retry < MAX_TRIES; ++retry)
             {
-                for (int retry = 0; retry < MAX_TRIES; ++retry)
+                foreach (Tuple<int, string> currentUrl in updateSites.Select((url, index) => Tuple.Create(index, string.Concat(url, versionUrl))))
                 {
-                    TraceLog.WriteLine($"Downloading update information (site: {currentUrl.Item1 + 1}/{numberOfSites}, attempt: {retry + 1}/{MAX_TRIES})");
+                    TraceLog.WriteLine($"Downloading update information (site: {currentUrl.Item1 + 1}/{updateSites.Count}, attempt: {retry + 1}/{MAX_TRIES})");
                     try
                     {
                         if (IsNotNull(updateInfo = DownloadFile(currentUrl.Item2)))
@@ -2214,6 +2214,7 @@ namespace CertViewer.Dialogs
                             if (VerifySignature(updateInfo.Item1, updateInfo.Item2, verificationKey))
                             {
                                 TraceLog.WriteLine($"Signature is valid.");
+                                Version version;
                                 if (Version.TryParse(updateInfo.Item1, out version))
                                 {
                                     TraceLog.WriteLine($"Latest available program version is: {version}");
