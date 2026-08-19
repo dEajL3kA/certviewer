@@ -48,7 +48,6 @@ using Org.BouncyCastle.Math.EC;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Security.Certificates;
-using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.Utilities.IO.Pem;
 using Org.BouncyCastle.X509;
@@ -1782,7 +1781,7 @@ namespace CertViewer.Dialogs
         {
             if (IsNotNull(authorityKeyId))
             {
-                return ToHexString(authorityKeyId.GetKeyIdentifier());
+                return ToHexString(authorityKeyId.KeyIdentifier.GetOctets());
             }
             return string.Empty;
         }
@@ -2067,7 +2066,6 @@ namespace CertViewer.Dialogs
             {
                 try
                 {
-                    MessageBox.Show("Yeah!");
                     string value;
                     if (IsNotEmpty(value = name.ToString(reverse, X509_NAME_ATTRIBUTES.Value)))
                     {
