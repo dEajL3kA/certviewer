@@ -111,7 +111,7 @@ OpenPGP key:
 
 ## License
 
-Copyright (c) 2025 "dEajL3kA" &lt;Cumpoing79@web.de&gt;  
+Copyright (c) 2026 "dEajL3kA" &lt;Cumpoing79@web.de&gt;  
 This work has been released under the MIT license. See [LICENSE.txt](LICENSE.txt) for details!
 
 ### Acknowledgement
@@ -120,7 +120,7 @@ CertViewer includes the following works:
 
 * **[Bouncy Castle](https://github.com/bcgit/bc-csharp) Cryptography Library For .NET**  
   MIT license  
-  Copyright (c) 2000-2025 The Legion of the Bouncy Castle Inc.
+  Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc.
 
 * **[Costura](https://github.com/Fody/Costura) Fody Add-in**  
   MIT license  
